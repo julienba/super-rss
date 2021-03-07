@@ -10,7 +10,7 @@ This library attempt to create a feed using alternative methods such as using a 
 ## Usage
 
 Try multiple method to create a RSS feed, from the more natural to the most "hacky"
-```
+```clj
 (require '[super-rss :as sr]])
 
 (sr/get-feed "http://website.com/" {} {})
@@ -24,18 +24,18 @@ Try multiple method to create a RSS feed, from the more natural to the most "hac
            :link "http://website.com/posts/blabla"}]}
 ```
 Try to create a feed from the sitemap
-```
+```clj
 (sr/get-feed "http://website.com/" {:method :sitemap} {})
 ```
 
 Try to create a feed from the links on "http://website.com/posts"
-```
+```clj
 (sr/get-feed "http://website.com/posts" {:method :page-links} {})
 ```
 
 Avoid crawling a page already ingest by passing a extra function.
 Useful to not crawl over and over the same page for big sitemap.
-```
+```clj
 (defn already-ingest? [url]
   ; your db call to check if the URL need to be crawl or if you already have the result in database
   ...
