@@ -4,7 +4,7 @@
 
 (def common-format ["yyyy/MM/dd" "dd/MM/yyyy/" "MMMM d, yyyy"
                     "MMM dd yyyy" "mmm dd yyyy" "MMM dd, yyyy"
-                    "d MMMM, yyyy"])
+                    "d MMMM, yyyy" "yyyy-MM-dd"])
 
 (defn str->date* [s format]
   (try
