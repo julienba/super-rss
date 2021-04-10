@@ -2,7 +2,7 @@
   (:require [java-time :as jt])
   (:import [java.time ZoneId]))
 
-(def common-format ["yyyy/MM/dd" "dd/MM/yyyy/" "MMMM d, yyyy"
+(def common-format ["yyyy/MM/dd" "dd/MM/yyyy" "MMMM d, yyyy"
                     "MMM dd yyyy" "mmm dd yyyy" "MMM dd, yyyy"
                     "d MMMM, yyyy" "yyyy-MM-dd"])
 
