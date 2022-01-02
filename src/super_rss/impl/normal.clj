@@ -1,5 +1,6 @@
 (ns super-rss.impl.normal
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as string]
+            [clojure.tools.logging :as log]
             [net.cgrand.enlive-html :as html]
             [remus :as remus]
             [super-rss.html :as rss.html]
@@ -20,9 +21,11 @@
   "Fetch feed, works with all RSS format"
   [url timeout]
   (try
-    (-> (remus/parse-url url {:insecure? true
-                              :connection-timeout timeout})
-        (get-in [:feed :entries]))
+    (let [{:keys [feed]} (remus/parse-url url {:insecure? true
+                                               :connection-timeout timeout})]
+      {:title       (some-> (:title feed) (string/trim))
+       :description (some-> (:description feed) (string/trim))
+       :entries     (:entries feed)})
     (catch clojure.lang.ExceptionInfo e
       (let [response (ex-data e)]
         (log/errorf "Fail to fetch url %s %s" url response)))

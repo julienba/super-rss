@@ -10,7 +10,10 @@
   (fn [method _url _opts] method))
 
 (defmethod fetch :direct-rss [_ url {:keys [timeout]}]
-  {:data (impl.normal/fetch-rss url timeout)})
+  (when-let [result (impl.normal/fetch-rss url timeout)]
+    {:title (:title result)
+     :description (:description result)
+     :data (:entries result)}))
 
 (defmethod fetch :find-rss-url [_ url {:keys [timeout]}]
   (when-let [feed-url (impl.normal/find-feed-url url)]
@@ -37,14 +40,19 @@
    {:keys [_already-ingest?] :as handler-fns}]
   (if method
     (let [method-keyword (if (vector? method) (first method) method)]
-      {:method method-keyword
-       :result (:data (fetch method-keyword url {:timeout timeout :handlers handler-fns}))})
+      (when-let [result (fetch method-keyword url {:timeout timeout :handlers handler-fns})]
+        {:method method-keyword
+         :title (:title result)
+         :description (:description result)
+         :result (:data result)}))
     (loop [[method & methods] method-options]
       (if (nil? method)
         nil
-        (let [{:keys [data param] :as result} (fetch method url {:timeout timeout :handlers handler-fns})]
+        (let [{:keys [data title description param] :as result} (fetch method url {:timeout timeout :handlers handler-fns})]
           (log/infof "Fetch %s using method %s" url method)
           (if (or (nil? result) (empty? data))
             (recur methods)
             {:method [method param]
+             :title title
+             :description description
              :result data}))))))
