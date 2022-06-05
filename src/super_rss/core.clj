@@ -24,7 +24,9 @@
   {:data (impl.links/poor-man-rss-html url opts)})
 
 (defmethod fetch :sitemap [_ url opts]
-  {:data (impl.sitemap/poor-man-rss url opts)})
+  (let [result (impl.sitemap/poor-man-rss url opts)]
+    {:data (:data result)
+     :param {:url (:url result)}}))
 
 (defmethod fetch :default [method & _]
   (log/errorf "Fetch method %s don't exist" method))

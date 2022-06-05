@@ -75,29 +75,31 @@
     - we only read 30 pages (arbitrary limit to avoid crawling too much of a website)"
   [url {:keys [handlers]}]
   (let [base-url    (util/get-base-url url)
-        sitemap-url (find-sitemap-url base-url)]
-    (cond
-      (nil? sitemap-url)
-      (log/debug "Cannot find sitemap for %s" url)
+        sitemap-url (find-sitemap-url base-url)
+        data (cond
+               (nil? sitemap-url)
+               (log/debug "Cannot find sitemap for %s" url)
 
-      (not (string/ends-with? sitemap-url ".xml"))
-      (log/infof "Sitemap type not supported %s" sitemap-url)
+               (not (string/ends-with? sitemap-url ".xml"))
+               (log/infof "Sitemap type not supported %s" sitemap-url)
 
-      :else
+               :else
 
-      (when-let [sitemap-urls (sitemap-url->urls sitemap-url)]
-        (let [post-urls (->> sitemap-urls
-                             (remove nil?)
-                             (filter common/blog-url?))]
-          (->> post-urls
-               (remove #(get #{"/news/" "/blog/"} %))
-               ; Remove page already ingest
-               (remove (fn [url] (if-let [f (:already-ingest? handlers)]
-                                   (f url)
-                                   false)))
-               (take 30) ; Limit the amount of page to crawl
-               (map #(try (rss.html/extract-html-meta %)
-                       (catch Exception e
+               (when-let [sitemap-urls (sitemap-url->urls sitemap-url)]
+                 (let [post-urls (->> sitemap-urls
+                                      (remove nil?)
+                                      (filter common/blog-url?))]
+                   (->> post-urls
+                        (remove #(get #{"/news/" "/blog/"} %))
+                        ; Remove page already ingest
+                        (remove (fn [url] (if-let [f (:already-ingest? handlers)]
+                                            (f url)
+                                            false)))
+                        (take 30) ; Limit the amount of page to crawl
+                        (map #(try (rss.html/extract-html-meta %)
+                                   (catch Exception e
                          ; Sitemap can contains non working page (404, redirect loop, etc)
-                         (log/infof e "Fail to parse URL %s" %))))
-               (remove nil?)))))))
+                                     (log/infof e "Fail to parse URL %s" %))))
+                        (remove nil?)))))]
+    {:data data 
+     :url sitemap-url}))
