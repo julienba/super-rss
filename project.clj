@@ -11,4 +11,6 @@
                  [clojure.java-time "0.3.2"]
                  [enlive "1.1.6"]
                  [remus "0.2.1"]]
-  :repl-options {:init-ns super-rss.core})
+  :repl-options {:init-ns super-rss.core}
+  :repositories [["releases" {:url "https://repo.clojars.org"
+                              :creds :gpg}]])
