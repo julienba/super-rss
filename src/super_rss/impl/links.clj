@@ -20,11 +20,10 @@
                       (distinct)
                       (remove #(get #{"/news/" "/blog/"} %))
                       ; If more than that there is probably something wrong
-                      (take 50))]
+                      (take 30))]
     (->> links
          (map #(str base-url %))
-         ; Remove page already ingest
-         (remove (fn [url]
+         (remove (fn removed-already-ingested-page [url]
                    (if-let [f (:already-ingest? handlers)]
                      (f url)
                      false)))
