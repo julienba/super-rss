@@ -13,20 +13,27 @@
   (when-let [result (impl.normal/fetch-rss url timeout)]
     {:title (:title result)
      :description (:description result)
-     :data (:entries result)}))
+     :data (:entries result)
+     :params {:method :direct-rss}}))
 
 (defmethod fetch :find-rss-url [_ url {:keys [timeout]}]
   (when-let [feed-url (impl.normal/find-feed-url url)]
-    {:data (impl.normal/fetch-rss feed-url timeout)
-     :param feed-url}))
+    (when-let [result (impl.normal/fetch-rss feed-url timeout)]
+      {:title (:title result)
+       :description (:description result)
+       :data (:entries result)
+       :params {:method :direct-rss
+                :url feed-url}})))
 
 (defmethod fetch :page-links [_ url opts]
-  {:data (impl.links/poor-man-rss-html url opts)})
+  {:data (impl.links/poor-man-rss-html url opts)
+   :params {:method :page-links}})
 
 (defmethod fetch :sitemap [_ url opts]
   (let [result (impl.sitemap/poor-man-rss url opts)]
     {:data (:data result)
-     :param {:url (:url result)}}))
+     :params {:method :sitemap
+              :url (:url result)}}))
 
 (defmethod fetch :default [method & _]
   (log/errorf "Fetch method %s don't exist" method))
@@ -41,20 +48,19 @@
     :or {timeout 10000 method-options [:find-rss-url :sitemap :page-links]}}
    {:keys [_already-ingest?] :as handler-fns}]
   (if method
-    (let [method-keyword (if (vector? method) (first method) method)]
-      (when-let [result (fetch method-keyword url {:timeout timeout :handlers handler-fns})]
-        {:method method-keyword
-         :title (:title result)
-         :description (:description result)
-         :result (:data result)}))
+    (when-let [result (fetch method url {:timeout timeout :handlers handler-fns})]
+      {:params (:params result)
+       :title (:title result)
+       :description (:description result)
+       :results (:data result)})
     (loop [[method & methods] method-options]
       (if (nil? method)
         nil
-        (let [{:keys [data title description param] :as result} (fetch method url {:timeout timeout :handlers handler-fns})]
+        (let [{:keys [data title description params] :as result} (fetch method url {:timeout timeout :handlers handler-fns})]
           (log/infof "Fetch %s using method %s" url method)
           (if (or (nil? result) (empty? data))
             (recur methods)
-            {:method [method param]
+            {:params params
              :title title
              :description description
-             :result data}))))))
+             :results data}))))))
