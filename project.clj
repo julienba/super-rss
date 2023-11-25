@@ -1,4 +1,4 @@
-(defproject com.github.julienba/super-rss "0.1.4-snapshot"
+(defproject com.github.julienba/super-rss "0.1.4"
   :description "A library to read RSS feed"
   :url "http://github.com/julienba/super-rss"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
