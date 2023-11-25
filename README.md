@@ -1,15 +1,15 @@
 # super-rss
 
 Library to get a RSS feed, even if the target website does not offer one.
-If there is a proper RSS feed it will use the excellent [remus](https://github.com/igrishaev/remus), otherwise it will try to create a feed using other HTTP resource.
+If there is a proper RSS feed it will use the excellent [remus](https://github.com/igrishaev/remus), otherwise, it will try to create a feed using another HTTP resource.
 
 ## Rationale
-Websites don't necessarily offer a RSS feed but most off them offer a sitemap to improve their SEO ranking.
-This library attempt to create a feed using alternative methods such as using a sitemap or parse a web page to extract the link.
+Websites don't necessarily offer an RSS feed but most of them offer a sitemap to improve their SEO ranking.
+This library attempts to create a feed using alternative methods such as using a sitemap or parsing a web page to extract the link.
 
 ## Usage
 
-Try multiple method to create a RSS feed, from the more natural to the most "hacky"
+Try multiple methods to create an RSS feed, from the more natural to the most "hacky"
 ```clj
 (require '[super-rss :as sr]])
 
@@ -33,19 +33,19 @@ Try to create a feed from the links on "http://website.com/posts"
 (sr/get-feed "http://website.com/posts" {:method :page-links} {})
 ```
 
-Avoid crawling a page already ingest by passing a extra function.
+Avoid crawling a page already ingested by passing an extra function.
 Useful to not crawl over and over the same page for big sitemap.
 ```clj
 (defn already-ingest? [url]
-  ; your db call to check if the URL need to be crawl or if you already have the result in database
+  ; your db call to check if the URL needs to be crawled or if you already have the result in your database
   ...
   )
 (sr/get-feed "http://website.com/" {:method :sitemap} {:already-ingest? already-ingest?})
 ```
 
 ## Limitations
-- Filtering what look like a feed entry won't work all the time
-- Parsing HTML page for finding a date is obviously not gonna work all the time.
+- Filtering what looks like a feed entry won't work all the time
+- Parsing an HTML page for finding a date is obviously not gonna work all the time.
 - Only XML sitemap are supported
 
 ## License
