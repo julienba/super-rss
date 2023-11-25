@@ -11,3 +11,8 @@ pom.xml.asc
 .hgignore
 .hg/
 .calva/
+.clj-kondo/.cache
+.clj-kondo/com.github.seancorfield/
+.clj-kondo/metosin/
+.lsp/
+.portal/

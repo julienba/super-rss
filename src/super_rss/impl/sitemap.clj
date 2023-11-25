@@ -19,7 +19,7 @@
                                    (first))]
         (last (string/split sitemap-line #" "))))))
 
-(defn find-sitemap-url-in-html
+(defn- find-sitemap-url-in-html
   "Look if the sitemap is specify in the html head"
   [base-url]
   (let [content (rss.html/get-web-page (str base-url "/"))]
@@ -31,7 +31,7 @@
         (str base-url url)
         url))))
 
-(defn find-sitemap-url [base-url]
+(defn- find-sitemap-url [base-url]
   (or (find-sitemap-url-in-robots base-url)
       (find-sitemap-url-in-html base-url)
       ; Give a try to a classic sitemap URL
@@ -39,7 +39,7 @@
         (when (= 200 status)
           (str base-url "/sitemap.xml")))))
 
-(defn parse-xml-string [s]
+(defn- parse-xml-string [s]
   (xml/parse (java.io.ByteArrayInputStream. (.getBytes s))))
 
 (defn- fetch-sitemap [url]
@@ -57,16 +57,17 @@
                                      (catch Exception _)))})]
         (->> url-list
              (sort-by :lastmod)
-             (reverse)
-             (map :url))))))
+             (reverse))))))
 
-(defn sitemap-url->urls
+(defn- sitemap-url->sitemap-contents
   [url]
-  (let [urls (fetch-sitemap url)]
-    (mapcat #(if (string/ends-with? % ".xml") ; sitemap can be in .gz, which is not supported right now
-               (fetch-sitemap %) ; We also parse the first "inner" sitemap (ie. a sitemap referring another sitemap)
+  (let [sitemap-contents (fetch-sitemap url)]
+    (mapcat #(if (string/ends-with? (:url %) ".xml") ; sitemap can be in .gz, which is not supported right now
+               (fetch-sitemap (:url %)) ; It also parse the first "inner" sitemap (ie. a sitemap referring another sitemap)
                [%])
-            urls)))
+            sitemap-contents)))
+
+(def page-crawl-limit 20)
 
 (defn poor-man-rss
   "Try to create and RSS feed using the sitemap.
@@ -74,8 +75,9 @@
     - page has to match common/blog-url?
     - we only read 30 pages (arbitrary limit to avoid crawling too much of a website)"
   [url {:keys [handlers]}]
-  (let [base-url    (util/get-base-url url)
-        sitemap-url (find-sitemap-url base-url)
+  (let [sitemap-url (if (string/ends-with? url ".xml")
+                      url
+                      (find-sitemap-url (util/get-base-url url)))
         data (cond
                (nil? sitemap-url)
                (log/debug "Cannot find sitemap for %s" url)
@@ -85,21 +87,24 @@
 
                :else
 
-               (when-let [sitemap-urls (sitemap-url->urls sitemap-url)]
-                 (let [post-urls (->> sitemap-urls
-                                      (remove nil?)
-                                      (filter common/blog-url?))]
-                   (->> post-urls
-                        (remove #(get #{"/news/" "/blog/"} %))
+               (when-let [sitemap-contents (sitemap-url->sitemap-contents sitemap-url)]
+                 (let [clean-sitemap-contents (->> sitemap-contents
+                                                   (remove nil?)
+                                                   (remove #(nil? (:url %)))
+                                                   (filter #(common/blog-url? (:url %))))]
+                   (->> clean-sitemap-contents
                         ; Remove page already ingest
-                        (remove (fn [url] (if-let [f (:already-ingest? handlers)]
-                                            (f url)
-                                            false)))
-                        (take 30) ; Limit the amount of page to crawl
-                        (map #(try (rss.html/extract-html-meta %)
-                                   (catch Exception e
-                         ; Sitemap can contains non working page (404, redirect loop, etc)
-                                     (log/infof e "Fail to parse URL %s" %))))
+                        (remove (fn [{:keys [url]}]
+                                  (if-let [f (:already-ingest? handlers)]
+                                    (f url)
+                                    false)))
+                        (take page-crawl-limit)
+                        (map (fn [{:keys [url lastmod]}]
+                               (try (cond-> (rss.html/extract-html-meta url)
+                                      lastmod (assoc :published-date lastmod))
+                                    (catch Exception e
+                                      ; Sitemap can contains non-working page (404, redirect loop, etc)
+                                      (log/infof e "Fail to parse URL %s" url)))))
                         (remove nil?)))))]
-    {:data data 
+    {:data data
      :url sitemap-url}))
