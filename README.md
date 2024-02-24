@@ -5,7 +5,7 @@ If there is a proper RSS feed it will use the excellent [remus](https://github.c
 
 ## Rationale
 Websites don't necessarily offer an RSS feed but most of them offer a sitemap to improve their SEO ranking.
-This library attempts to create a feed using alternative methods such as using a sitemap or parsing a web page to extract the link.
+This library attempts to create a feed using alternative methods such as using a sitemap or parsing a web page to extract the links.
 
 ## Usage
 
