@@ -2,9 +2,9 @@
   (:require [java-time :as jt])
   (:import [java.time ZoneId]))
 
-(def common-format ["yyyy/MM/dd" "dd/MM/yyyy" "MMMM d, yyyy"
+(def common-format ["yyyy/MM/dd" "dd/MM/yyyy" "MM/dd/yyyy" "MMMM d, yyyy"
                     "MMM dd yyyy" "mmm dd yyyy" "MMM dd, yyyy"
-                    "d MMMM, yyyy" "yyyy-MM-dd"])
+                    "d MMMM, yyyy" "yyyy-MM-dd" "dd MMM yyyy"])
 
 (defn str->date* [s format]
   (try
@@ -17,14 +17,16 @@
   (some #(when (str->date* s %) (str->date* s %))
         common-format))
 
+;; TODO find the format that work better for the list of date candidate and reparse all with it
+
 (def zoneid-utc (ZoneId/of "UTC"))
 
 (defn- local-date->instant
   "Converts a LocalDate to a instant using UTC"
   [ld]
   (-> ld
-    (.atStartOfDay zoneid-utc)
-    (.toInstant)))
+      (.atStartOfDay zoneid-utc)
+      (.toInstant)))
 
 (defn local-date->date [ld]
   (-> ld

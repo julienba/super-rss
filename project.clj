@@ -1,4 +1,4 @@
-(defproject com.github.julienba/super-rss "0.1.4"
+(defproject com.github.julienba/super-rss "0.1.5"
   :description "A library to read RSS feed"
   :url "http://github.com/julienba/super-rss"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
@@ -10,7 +10,8 @@
                  [log4j/log4j "1.2.17"]
                  [clojure.java-time "0.3.3"]
                  [enlive "1.1.6"]
-                 [remus "0.2.2"]]
+                 [remus "0.2.2"]
+                 [org.clj-commons/hickory "0.7.4"]]
   :repl-options {:init-ns super-rss.core}
   :repositories [["releases" {:url "https://repo.clojars.org"
                               :creds :gpg}]])

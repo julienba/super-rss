@@ -5,7 +5,7 @@
             [super-rss.impl.common :as common]
             [super-rss.util :as util]))
 
-(defn poor-man-rss-html
+(defn ^:deprecated poor-man-rss-html
   "Retrieve all relative link starting with prefix hinting at a content post
    If some are found, crawl each page to retrieve title, description and date.
    Date is lack luster as it need to be found in a free form HTML"
@@ -22,7 +22,7 @@
                       ; If more than that there is probably something wrong
                       (take 30))]
     (->> links
-         (map #(str base-url %))
+         (map #(str base-url "/" %))
          (remove (fn removed-already-ingested-page [url]
                    (if-let [f (:already-ingest? handlers)]
                      (f url)

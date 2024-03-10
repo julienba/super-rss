@@ -2,6 +2,7 @@
   (:require [clojure.core.cache :as cache]
             [clojure.string :as string]
             [clj-http.client :as http]
+            [hickory.core :as h]
             [net.cgrand.enlive-html :as html]
             [super-rss.date :as date]))
 
@@ -13,6 +14,12 @@
   (when-let [html (:body (http/get url))]
     (let [data (html/html-snippet html {:headers headers})]
       data)))
+
+(defn fetch-hickory
+  "Fetch an url and return and enlive version of the body"
+  [url]
+  (when-let [body (:body (http/get url {:headers headers}))]
+    (-> body h/parse h/as-hickory #_h/as-hiccup)))
 
 ; ~ Cache ======================================================================
 (def C (atom (cache/ttl-cache-factory {} :ttl (* 24 60 1000))))
@@ -29,6 +36,12 @@
    Use caching to limit the amount of external reading."
   [url]
   (get-web-page* url fetch))
+
+(defn get-hickory-web-page
+  "Fetch a url and cache the result.
+   Use caching to limit the amount of external reading."
+  [url]
+  (get-web-page* url fetch-hickory))
 
 ; ~ Parsing ====================================================================
 
