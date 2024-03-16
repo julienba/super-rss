@@ -8,7 +8,7 @@
             [super-rss.html :as rss.html]))
 
 (def ignore-href-pattern
-  (re-pattern "(?i)#|instagram|facebook|twitter|linkedin|/blog/|/terms-and-privacy/|/author/|mailto:|javascript:"))
+  (re-pattern "(?i)#|instagram|facebook|twitter|linkedin|/terms-and-privacy/|/author/|mailto:|javascript:"))
 
 (defn- find-all-links
   [content]
