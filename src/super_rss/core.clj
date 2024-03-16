@@ -31,7 +31,6 @@
   {:data (impl.links/poor-man-rss-html url opts)
    :params {:method :page-links}})
 
-
 (defmethod fetch :smart-links [_ url _]
   {:data (impl.smart-links/poor-man-rss-html url)
    :params {:method :page-links}})

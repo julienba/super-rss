@@ -19,7 +19,7 @@
   "Fetch an url and return and enlive version of the body"
   [url]
   (when-let [body (:body (http/get url {:headers headers}))]
-    (-> body h/parse h/as-hickory #_h/as-hiccup)))
+    (some-> body h/parse h/as-hickory :content second)))
 
 ; ~ Cache ======================================================================
 (def C (atom (cache/ttl-cache-factory {} :ttl (* 24 60 1000))))
