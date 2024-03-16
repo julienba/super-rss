@@ -22,26 +22,34 @@
     (some-> body h/parse h/as-hickory :content second)))
 
 ; ~ Cache ======================================================================
-(def C (atom (cache/ttl-cache-factory {} :ttl (* 24 60 1000))))
+(defn- create-cache []
+  (cache/ttl-cache-factory {} :ttl (* 24 60 1000)))
 
-(defn get-web-page* [url run-fn]
+(def C (atom (create-cache)))
+
+(defn reset-cache! []
+  (reset! C (create-cache))
+  nil)
+
+(defn- get-web-page* [cache-key url run-fn]
   (get
-    (if (cache/has? @C url)
-      (cache/hit @C url)
-      (swap! C #(cache/miss % url (run-fn url))))
-    url))
+    (if (cache/has? @C cache-key)
+      (cache/hit @C cache-key)
+      (swap! C #(cache/miss % cache-key (run-fn url))))
+    cache-key))
 
-(defn get-web-page
+(defn ^:deprecated get-web-page
   "Fetch a url and cache the result.
-   Use caching to limit the amount of external reading."
+   Use caching to limit the amount of external reading.
+   Deprecated in favor of the hickory version"
   [url]
-  (get-web-page* url fetch))
+  (get-web-page* url url fetch))
 
 (defn get-hickory-web-page
   "Fetch a url and cache the result.
    Use caching to limit the amount of external reading."
   [url]
-  (get-web-page* url fetch-hickory))
+  (get-web-page* (str "hickory-" url) url fetch-hickory))
 
 ; ~ Parsing ====================================================================
 

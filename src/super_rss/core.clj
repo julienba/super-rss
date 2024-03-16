@@ -1,10 +1,14 @@
 (ns super-rss.core
   (:require clojure.instant
             [clojure.tools.logging :as log]
+            [super-rss.html :as html]
             [super-rss.impl.normal :as impl.normal]
             [super-rss.impl.links :as impl.links]
             [super-rss.impl.sitemap :as impl.sitemap]
             [super-rss.impl.smart-links :as impl.smart-links]))
+
+(defn reset-cache! []
+  (html/reset-cache!))
 
 (defmulti fetch
   "Different implementation for creating an RSS feed"
@@ -33,7 +37,7 @@
 
 (defmethod fetch :smart-links [_ url _]
   {:data (impl.smart-links/poor-man-rss-html url)
-   :params {:method :page-links}})
+   :params {:method :smart-links}})
 
 (defmethod fetch :sitemap [_ url opts]
   (let [result (impl.sitemap/poor-man-rss url opts)]
@@ -51,7 +55,7 @@
    Return a map of `:data` with the RSS feed and `:method` with the method used to retrieve the feed."
   [url
    {:keys [timeout method method-options]
-    :or {timeout 10000 method-options [:find-rss-url :sitemap #_:page-links :smart-links]}}
+    :or {timeout 10000 method-options [:find-rss-url :sitemap :smart-links]}}
    {:keys [_already-ingest?] :as handler-fns}]
   (if method
     (when-let [result (fetch method url {:timeout timeout :handlers handler-fns})]
