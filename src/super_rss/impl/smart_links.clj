@@ -8,7 +8,7 @@
             [super-rss.html :as rss.html]))
 
 (def ignore-href-pattern
-  (re-pattern "(?i)#|instagram|facebook|twitter|linkedin|/terms-and-privacy/|/author/|mailto:|javascript:"))
+  (re-pattern "(?i)#|instagram|facebook|twitter|linkedin|/terms-and-privacy/|author/privacypolicy/|privacypolicy.html|mailto:|javascript:"))
 
 (defn- find-all-links
   [content]
@@ -145,7 +145,22 @@
                        (conj explored (first href-set))
                        (concat results founds)))))))
 
+(defn- cleanup-link [root-url link]
+  (cond
+    ;; Valid link
+    (string/starts-with? link "http")
+    link
+
+    ;; relative link
+    (string/starts-with? link "/")
+    (str root-url (subs link 1))
+
+    ;; relative link missing the `/`
+    :else (str root-url link)))
+
 (defn poor-man-rss-html [url]
   (let [content (rss.html/get-hickory-web-page url)
         all-links (find-all-links content)]
-    (find-list content all-links)))
+    (->> (find-list content all-links)
+         (map (fn [result] (update result :link #(cleanup-link url %))))
+         (remove #(string/starts-with? (:link %) (str url "author/"))))))
