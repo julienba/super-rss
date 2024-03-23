@@ -5,22 +5,15 @@
             [hickory.select :as hs]
             [net.cgrand.enlive-html :as html]
             [super-rss.date :as date]
-            [super-rss.html :as rss.html]))
-
-(def ignore-href-pattern
-  (re-pattern "(?i)#|instagram|facebook|twitter|linkedin|/terms-and-privacy/|author/privacypolicy/|privacypolicy.html|mailto:|javascript:"))
+            [super-rss.html :as rss.html]
+            [super-rss.impl.common :as common]))
 
 (defn- find-all-links
-  [content]
+  [root-url content]
   (->> (hs/select (hs/child (hs/tag :a)) content)
-       (remove #(let [href (get-in % [:attrs :href])]
-                  (or (string/blank? href)
-                      (= "/" href)
-                      (re-find ignore-href-pattern href)
-                      (string/starts-with? href "javascript:"))))
-       (remove #(= "nofollow" (get-in % [:attrs :rel]))) ; be a good citizen
+       (remove #(= "nofollow" (get-in % [:attrs :rel]))) ; be a good Netizen
        (map #(get-in % [:attrs :href]))
-       distinct))
+       (common/cleanup-urls root-url)))
 
 (def min-length-anchor-href 10)
 (def min-length-anchor-content 12)
@@ -62,10 +55,10 @@
 (defn- extract-feed-information [post-node]
   (let [anchors (->> (html/select post-node [:a])
                      (remove #(> min-length-anchor-href (count (get-in % [:attrs :href] ""))))
-                     (remove #(re-find ignore-href-pattern (get-in % [:attrs :href] ""))))
+                     (remove #(re-find common/ignore-href-pattern (get-in % [:attrs :href] ""))))
         main-anchor (if (= 1 (count anchors))
                       (first anchors)
-                      ;; take the anchor with the longer content
+                      ;; take the anchor with the longest content
                       (->> anchors
                            (remove #(map? (-> % :content first)))
                            (sort comp-content-length)
@@ -82,47 +75,62 @@
        :published-date (when (:date extra-content)
                          (date/local-date->date (:date extra-content)))})))
 
-(defn- find-list*
-  "Explore parent nodes to see if one is a lsit of content"
-  [content href]
-  (let [loc (-> (hs/select-locs  (hs/child (hs/and (hs/tag :a)
-                                                   (hs/attr :href #(= % href))))
-                                 content)
-                first)
-        childs->entry (fn [maybe-childs]
-                        (->> maybe-childs
-                             (filter map?)
-                             (map extract-feed-information)
-                             (remove nil?)))
-        results0 (-> loc
-                     z/up
-                     z/children
-                     childs->entry)
-        results1 (-> loc
-                     z/up z/up
-                     z/children
-                     childs->entry)
-        results2 (-> loc
-                     z/up z/up z/up
-                     z/children
-                     childs->entry)
-        results3 (-> loc
-                     z/up z/up z/up z/up
-                     z/children
-                     childs->entry)
-        results4 (-> loc
-                     z/up z/up z/up z/up z/up
-                     z/children
-                     childs->entry)]
-    (cond
-      (< 2 (count results0)) results0
-      (< 2 (count results1)) results1
-      (< 2 (count results2)) results2
-      (< 2 (count results3)) results3
-      (< 2 (count results4)) results4
-      :else nil)))
+(defn url->absolute-url [root-url url]
+  (cond
+    (string/starts-with? "http" url)
+    url
 
-(defn- find-list [content hrefs]
+    (not= "/" (str (first url)))
+    (str root-url url)
+
+    (= "/" (str (first url)))
+    (str (subs root-url 0 (dec (count root-url))) url)))
+
+(defn- find-list*
+  "Explore parent nodes to see if one is a list of content"
+  [root-url content href]
+  (if-let [loc (-> (hs/select-locs (hs/child (hs/and (hs/tag :a)
+                                                     (hs/attr :href #(= (url->absolute-url root-url %)
+                                                                        href))))
+                                   content)
+                   first)]
+    (let [childs->entry (fn [maybe-childs]
+                          (->> maybe-childs
+                               (filter map?)
+                               (map extract-feed-information)
+                               (remove nil?)))
+          results0 (-> loc
+                       z/up
+                       z/children
+                       childs->entry)
+          results1 (-> loc
+                       z/up z/up
+                       z/children
+                       childs->entry)
+          results2 (-> loc
+                       z/up z/up z/up
+                       z/children
+                       childs->entry)
+          results3 (-> loc
+                       z/up z/up z/up z/up
+                       z/children
+                       childs->entry)
+          results4 (-> loc
+                       z/up z/up z/up z/up z/up
+                       z/children
+                       childs->entry)]
+      (cond
+        (< 2 (count results0)) results0
+        (< 2 (count results1)) results1
+        (< 2 (count results2)) results2
+        (< 2 (count results3)) results3
+        (< 2 (count results4)) results4
+        :else nil))
+    (throw (ex-info "The href cannot be found in the document"
+                    {:href href
+                     :root-url root-url}))))
+
+(defn- find-list [source-url content hrefs]
   (loop [href-set (set hrefs)
          explored #{}
          results []]
@@ -135,7 +143,7 @@
       (get explored (first href-set))
       (recur (disj href-set (first href-set)) explored results)
 
-      :else (let [founds (find-list* content (first href-set))
+      :else (let [founds (find-list* source-url content (first href-set))
                   href-found-set (set (map :link founds))]
               (if (empty? founds)
                 (recur (disj href-set (first href-set))
@@ -145,22 +153,10 @@
                        (conj explored (first href-set))
                        (concat results founds)))))))
 
-(defn- cleanup-link [root-url link]
-  (cond
-    ;; Valid link
-    (string/starts-with? link "http")
-    link
-
-    ;; relative link
-    (string/starts-with? link "/")
-    (str root-url (subs link 1))
-
-    ;; relative link missing the `/`
-    :else (str root-url link)))
-
 (defn poor-man-rss-html [url]
   (let [content (rss.html/get-hickory-web-page url)
-        all-links (find-all-links content)]
-    (->> (find-list content all-links)
-         (map (fn [result] (update result :link #(cleanup-link url %))))
-         (remove #(string/starts-with? (:link %) (str url "author/"))))))
+        root-url (common/get-root-url url)
+        all-links (->> (find-all-links root-url content)
+                       (remove #(= url %)))]
+    (->> (find-list root-url content all-links)
+         (map (fn [result] (update result :link #(url->absolute-url root-url %)))))))

@@ -19,7 +19,8 @@
     {:title (:title result)
      :description (:description result)
      :data (:entries result)
-     :params {:method :direct-rss}}))
+     :params {:method :direct-rss
+              :url url}}))
 
 (defmethod fetch :find-rss-url [_ url {:keys [timeout]}]
   (when-let [feed-url (impl.normal/find-feed-url url)]
@@ -33,11 +34,13 @@
 ;; deprecated
 (defmethod fetch :page-links [_ url opts]
   {:data (impl.links/poor-man-rss-html url opts)
-   :params {:method :page-links}})
+   :params {:method :page-links
+            :url url}})
 
 (defmethod fetch :smart-links [_ url _]
   {:data (impl.smart-links/poor-man-rss-html url)
-   :params {:method :smart-links}})
+   :params {:method :smart-links
+            :url url}})
 
 (defmethod fetch :sitemap [_ url opts]
   (let [result (impl.sitemap/poor-man-rss url opts)]

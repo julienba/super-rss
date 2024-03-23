@@ -3,6 +3,7 @@
             [clojure.string :as string]
             [clj-http.client :as http]
             [hickory.core :as h]
+            [hickory.select :as hs]
             [net.cgrand.enlive-html :as html]
             [super-rss.date :as date]))
 
@@ -19,7 +20,8 @@
   "Fetch an url and return and enlive version of the body"
   [url]
   (when-let [body (:body (http/get url {:headers headers}))]
-    (some-> body h/parse h/as-hickory :content second)))
+    (when-let [content (some-> body h/parse h/as-hickory)]
+      (first (hs/select (hs/child (hs/tag :html)) content)))))
 
 ; ~ Cache ======================================================================
 (defn- create-cache []

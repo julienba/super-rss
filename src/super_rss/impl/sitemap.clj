@@ -93,6 +93,7 @@
                                                    (remove #(nil? (:url %)))
                                                    (filter #(common/blog-url? (:url %))))]
                    (->> clean-sitemap-contents
+                        (map #(update % :url (fn [url] (some-> url string/trim))))
                         ; Remove page already ingest
                         (remove (fn [{:keys [url]}]
                                   (if-let [f (:already-ingest? handlers)]

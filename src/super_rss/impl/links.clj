@@ -18,7 +18,7 @@
                       (remove nil?)
                       (filter common/blog-url?)
                       (distinct)
-                      (remove #(get #{"/news/" "/blog/"} %))
+                      (remove #(get #{"/news/" "/blog/" "/articles/"} %))
                       ; If more than that there is probably something wrong
                       (take 30))]
     (->> links
