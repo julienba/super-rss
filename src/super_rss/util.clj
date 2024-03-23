@@ -10,7 +10,7 @@
 
 (defn url->absolute-url [root-url url]
   (cond
-    (string/starts-with? "http" url)
+    (string/starts-with? url "http")
     url
 
     (not= "/" (str (first url)))
