@@ -22,6 +22,7 @@
        (not (string/ends-with? url "/news/"))
        (boolean (seq (re-find #"[a-zA-Z]+" (last (string/split url #"/")))))))
 
+;; TODO duplicated of super-rss.util but this one does nto return the `/`
 (defn get-root-url [url]
   (let [url-obj (URL. url)
         host (.getHost url-obj)

@@ -6,7 +6,8 @@
             [net.cgrand.enlive-html :as html]
             [super-rss.date :as date]
             [super-rss.html :as rss.html]
-            [super-rss.impl.common :as common]))
+            [super-rss.impl.common :as common]
+            [super-rss.util :as util]))
 
 (defn- find-all-links
   [root-url content]
@@ -75,22 +76,11 @@
        :published-date (when (:date extra-content)
                          (date/local-date->date (:date extra-content)))})))
 
-(defn url->absolute-url [root-url url]
-  (cond
-    (string/starts-with? "http" url)
-    url
-
-    (not= "/" (str (first url)))
-    (str root-url url)
-
-    (= "/" (str (first url)))
-    (str (subs root-url 0 (dec (count root-url))) url)))
-
 (defn- find-list*
   "Explore parent nodes to see if one is a list of content"
   [root-url content href]
   (if-let [loc (-> (hs/select-locs (hs/child (hs/and (hs/tag :a)
-                                                     (hs/attr :href #(= (url->absolute-url root-url %)
+                                                     (hs/attr :href #(= (util/url->absolute-url root-url %)
                                                                         href))))
                                    content)
                    first)]
@@ -159,4 +149,4 @@
         all-links (->> (find-all-links root-url content)
                        (remove #(= url %)))]
     (->> (find-list root-url content all-links)
-         (map (fn [result] (update result :link #(url->absolute-url root-url %)))))))
+         (map (fn [result] (update result :link #(util/url->absolute-url root-url %)))))))
