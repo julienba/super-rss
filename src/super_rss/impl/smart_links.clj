@@ -22,7 +22,9 @@
 (defn- clean-string [s]
   (some-> s
           string/trim
-          (string/replace #"\n" "")))
+          (string/replace #"\n" "")
+          ;; Replace long empty space => side effect of not find the right element
+          (string/replace #"\s\s\s+" " - ")))
 
 (defn- search-for-extra-content
   "Try to find the title description and date"
@@ -149,4 +151,4 @@
         all-links (->> (find-all-links root-url content)
                        (remove #(= url %)))]
     (->> (find-list root-url content all-links)
-         (map (fn [result] (update result :link #(util/url->absolute-url root-url %)))))))
+         (map (fn [result] (update result :link #(util/url->absolute-url url %)))))))

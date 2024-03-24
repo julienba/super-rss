@@ -14,4 +14,8 @@
                  [org.clj-commons/hickory "0.7.4"]]
   :repl-options {:init-ns super-rss.core}
   :repositories [["releases" {:url "https://repo.clojars.org"
-                              :creds :gpg}]])
+                              :creds :gpg}]]
+
+  :profiles {:test {:plugins [[lein-cloverage "1.2.2"]]
+                    :resource-paths ["test/resources"]
+                    :source-paths ["test"]}})

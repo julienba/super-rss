@@ -1,5 +1,6 @@
 (ns super-rss.impl.common
-  (:require [clojure.string :as string])
+  (:require [clojure.string :as string]
+            [super-rss.util :as util])
   (:import (java.net URL)))
 
 (def ^:private post-prefix #{"/post/"
@@ -55,28 +56,4 @@
        (clean-by-prefix)
        (remove #(get bad-pages %))
        distinct
-       (map #(cond
-               (string/starts-with? % "/")
-               (str root-url (subs % 1))
-
-               (string/starts-with? % "http")
-               %
-               :else %))))
-
-;; (cleanup-urls "http://a.com/" ["/"])
-;; (cleanup-urls "http://a.com/" ["https://b.com/another"])
-
-;; (cleanup-urls "http://a.com/" ["http://a.com/blog"
-;;                                "http://a.com/blog/"
-;;                                "http://a.com/random"
-;;                                "http://a.com/random/more"
-;;                                "http://a.com/blog/article1"
-;;                                "http://a.com/blog/article2"
-;;                                "/blog"
-;;                                "/blog/"
-;;                                "/random"
-;;                                "/random/more"
-;;                                "/blog/article1"
-;;                                "/blog/article2"
-;;                                "/"
-;;                                "blog/article0"])
+       (map #(util/url->absolute-url root-url %))))

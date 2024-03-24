@@ -16,12 +16,15 @@
     (let [data (html/html-snippet html {:headers headers})]
       data)))
 
+(defn- html->hickory [html-content]
+  (when-let [content (some-> html-content h/parse h/as-hickory)]
+    (first (hs/select (hs/child (hs/tag :html)) content))))
+
 (defn fetch-hickory
   "Fetch an url and return and enlive version of the body"
   [url]
   (when-let [body (:body (http/get url {:headers headers}))]
-    (when-let [content (some-> body h/parse h/as-hickory)]
-      (first (hs/select (hs/child (hs/tag :html)) content)))))
+    (html->hickory body)))
 
 ; ~ Cache ======================================================================
 (defn- create-cache []

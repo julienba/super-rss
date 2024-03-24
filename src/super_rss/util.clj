@@ -13,8 +13,22 @@
     (string/starts-with? url "http")
     url
 
-    (not= "/" (str (first url)))
+    (and (= "/" (str (last root-url)))
+         (= "/" (str (first url))))
+    (str root-url (subs url 1))
+
+
+    (and (not= "/" (str (last root-url)))
+         (not= "/" (str (first url))))
+    (str root-url "/" url)
+
+    ;; suffix of root-url and url are the same
+    (= (last (string/split root-url #"/"))
+       (second (string/split url #"/")))
+    (str root-url (subs url (inc (count (second (string/split url #"/"))))))
+
+    (and (not= "/" (str (last root-url)))
+         (= "/" (str (first url))))
     (str root-url url)
 
-    (= "/" (str (first url)))
-    (str (subs root-url 0 (dec (count root-url))) url)))
+    :else (str root-url url)))
