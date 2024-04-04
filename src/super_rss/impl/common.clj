@@ -32,11 +32,11 @@
 
 (def ^:private bad-pages
   #{"/blog/" "/news/" "/category/" "/author/" "/tags/"
-    "/about"
+    "/about" "/all-posts"
     "/contact"})
 
 (def ignore-href-pattern
-  (re-pattern "(?i)#|instagram|facebook|twitter|linkedin|/terms-and-privacy/|^/author|^/privacypolicy/|privacypolicy.html|^mailto:|^javascript:"))
+  (re-pattern "(?i)#|instagram|facebook|twitter|linkedin|/terms-and-privacy/|^/author|^author/|^/privacypolicy|^privacypolicy|privacypolicy.html|^mailto:|^javascript:"))
 
 (def article-prefix
   #"(?i)#|^/blog/|^blog/|^/news/|^news/|^/articles/|^articles/")
@@ -55,5 +55,8 @@
        (remove #(re-find ignore-href-pattern %))
        (clean-by-prefix)
        (remove #(get bad-pages %))
+      ;;  frequencies
+      ;;  (remove (fn [[_url cnt]] (< cnt 2))) ;; if an URL is repeat it is most likely not a new items
+      ;;  (map first)
        distinct
        (map #(util/url->absolute-url root-url %))))

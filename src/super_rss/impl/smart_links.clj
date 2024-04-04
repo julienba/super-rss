@@ -112,11 +112,11 @@
                        z/children
                        childs->entry)]
       (cond
-        (< 2 (count results0)) results0
-        (< 2 (count results1)) results1
-        (< 2 (count results2)) results2
-        (< 2 (count results3)) results3
-        (< 2 (count results4)) results4
+        (< 3 (count results0)) results0
+        (< 3 (count results1)) results1
+        (< 3 (count results2)) results2
+        (< 3 (count results3)) results3
+        (< 3 (count results4)) results4
         :else nil))
     (throw (ex-info "The href cannot be found in the document"
                     {:href href
