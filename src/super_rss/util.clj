@@ -31,4 +31,10 @@
          (= "/" (str (first url))))
     (str root-url url)
 
+    (string/starts-with? url "javascript:")
+    url
+
+    (string/starts-with? url "mailto:")
+    url
+
     :else (str root-url url)))

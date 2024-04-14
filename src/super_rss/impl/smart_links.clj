@@ -122,6 +122,8 @@
                     {:href href
                      :root-url root-url}))))
 
+;; TODO once found the content should be update to not have to parse the entire structure again
+;; find-list* should return the modify content as well
 (defn- find-list [source-url content hrefs]
   (loop [href-set (set hrefs)
          explored #{}
@@ -135,7 +137,8 @@
       (get explored (first href-set))
       (recur (disj href-set (first href-set)) explored results)
 
-      :else (let [founds (find-list* source-url content (first href-set))
+      :else (let [founds (->> (find-list* source-url content (first href-set))
+                              (filter #(get href-set (:link %))))
                   href-found-set (set (map :link founds))]
               (if (empty? founds)
                 (recur (disj href-set (first href-set))
@@ -150,5 +153,4 @@
         root-url (common/get-root-url url)
         all-links (->> (find-all-links root-url content)
                        (remove #(= url %)))]
-    (->> (find-list root-url content all-links)
-         (map (fn [result] (update result :link #(util/url->absolute-url url %)))))))
+    (find-list root-url content all-links)))

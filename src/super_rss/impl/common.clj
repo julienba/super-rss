@@ -30,33 +30,15 @@
         protocol (.getProtocol url-obj)]
     (str protocol "://" host "/")))
 
-(def ^:private bad-pages
-  #{"/blog/" "/news/" "/category/" "/author/" "/tags/"
-    "/about" "/all-posts"
-    "/contact"})
-
-(def ignore-href-pattern
-  (re-pattern "(?i)#|instagram|facebook|twitter|linkedin|/terms-and-privacy/|^/author|^author/|^/privacypolicy|^privacypolicy|privacypolicy.html|^mailto:|^javascript:"))
-
-(def article-prefix
-  #"(?i)#|^/blog/|^blog/|^/news/|^news/|^/articles/|^articles/")
-
-(defn- clean-by-prefix [urls]
-  (let [urls-prefixed (filter #(re-find article-prefix %) urls)]
-    (if (< 2 (count urls-prefixed))
-      urls-prefixed
-      urls)))
-
-(defn cleanup-urls [root-url urls]
+(defn cleanup-urls
+  "Cleanup urls that are nto intresting and not from the same domain.
+   urls are expected to be absolutes"
+  [root-url urls]
   (->> urls
        (remove string/blank?)
-       (remove #(= "/" %))
-       (map #(string/replace-first % root-url "/"))
-       (remove #(re-find ignore-href-pattern %))
-       (clean-by-prefix)
-       (remove #(get bad-pages %))
-      ;;  frequencies
-      ;;  (remove (fn [[_url cnt]] (< cnt 2))) ;; if an URL is repeat it is most likely not a new items
-      ;;  (map first)
-       distinct
-       (map #(util/url->absolute-url root-url %))))
+       (remove #(= root-url %))
+       (remove #(= (str root-url "/") %))
+       (filter #(string/starts-with? % root-url))
+       (remove #(re-find #"(?i)#|/author/|/terms-and-privacy/|/article$|/articles$|/blog$|/blog/$|/contact$|/contact/$|/news$|/news/$|/tag$|/tag/$|/about$|/about-us$|/about-us/$|/privacypolicy|/terms-and-privacy/|javascript:|mailto:|all-posts$|all-posts/$"
+                         %))
+       distinct))
