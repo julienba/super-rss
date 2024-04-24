@@ -78,6 +78,9 @@
        :published-date (when (:date extra-content)
                          (date/local-date->date (:date extra-content)))})))
 
+;; Minimum number of nodes that needs to contains feed-like information
+(def min-node 2)
+
 (defn- find-list*
   "Explore parent nodes to see if one is a list of content"
   [root-url content href]
@@ -112,11 +115,11 @@
                        z/children
                        childs->entry)]
       (cond
-        (< 3 (count results0)) results0
-        (< 3 (count results1)) results1
-        (< 3 (count results2)) results2
-        (< 3 (count results3)) results3
-        (< 3 (count results4)) results4
+        (< min-node (count results0)) results0
+        (< min-node (count results1)) results1
+        (< min-node (count results2)) results2
+        (< min-node (count results3)) results3
+        (< min-node (count results4)) results4
         :else nil))
     (throw (ex-info "The href cannot be found in the document"
                     {:href href
@@ -154,3 +157,4 @@
         all-links (->> (find-all-links root-url content)
                        (remove #(= url %)))]
     (find-list root-url content all-links)))
+

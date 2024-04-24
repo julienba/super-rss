@@ -1,7 +1,9 @@
 (ns super-rss.impl.common
-  (:require [clojure.string :as string]
-            [super-rss.util :as util])
+  (:require [clojure.string :as string])
   (:import (java.net URL)))
+
+(def ignore-href-pattern
+  (re-pattern "(?i)#|instagram|facebook|twitter|linkedin|/terms-and-privacy/|^/author|^/privacypolicy/|privacypolicy.html|^mailto:|^javascript:"))
 
 (def ^:private post-prefix #{"/post/"
                              "/blog/"
@@ -23,7 +25,7 @@
        (not (string/ends-with? url "/news/"))
        (boolean (seq (re-find #"[a-zA-Z]+" (last (string/split url #"/")))))))
 
-;; TODO duplicated of super-rss.util but this one does nto return the `/`
+;; TODO duplicated of super-rss.util but this one does not return the `/`
 (defn get-root-url [url]
   (let [url-obj (URL. url)
         host (.getHost url-obj)
@@ -31,7 +33,7 @@
     (str protocol "://" host "/")))
 
 (defn cleanup-urls
-  "Cleanup urls that are nto intresting and not from the same domain.
+  "Cleanup urls that are not intresting and not from the same domain.
    urls are expected to be absolutes"
   [root-url urls]
   (->> urls
@@ -39,6 +41,6 @@
        (remove #(= root-url %))
        (remove #(= (str root-url "/") %))
        (filter #(string/starts-with? % root-url))
-       (remove #(re-find #"(?i)#|/author/|/terms-and-privacy/|/article$|/articles$|/blog$|/blog/$|/contact$|/contact/$|/news$|/news/$|/tag$|/tag/$|/about$|/about-us$|/about-us/$|/privacypolicy|/terms-and-privacy/|javascript:|mailto:|all-posts$|all-posts/$"
+       (remove #(re-find #"(?i)#|/author/|/terms-and-privacy/|/article$|/articles$|/blog$|/blog/$|/contact$|/contact/$|/news$|/news/$|/tag$|/tag/$|/about$|/about-us$|/about-us/$|/privacypolicy|/terms-and-privacy/|javascript:|mailto:|all-posts$|all-posts/$|privacy-policy$"
                          %))
        distinct))

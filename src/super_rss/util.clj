@@ -1,40 +1,19 @@
 (ns super-rss.util
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string])
+  (:import (java.net URI
+                     URL)))
 
 (defn get-base-url [website-url]
-  (let [host   (.getHost (java.net.URI. website-url))
+  (let [host   (.getHost (URI. website-url))
         prefix (if (string/starts-with? website-url "https://")
                  "https://"
                  "http://")]
     (str prefix host)))
 
 (defn url->absolute-url [root-url url]
-  (cond
-    (string/starts-with? url "http")
+  (if (or (string/starts-with? url "javascript:")
+          (string/starts-with? url "mailto:"))
     url
-
-    (and (= "/" (str (last root-url)))
-         (= "/" (str (first url))))
-    (str root-url (subs url 1))
-
-
-    (and (not= "/" (str (last root-url)))
-         (not= "/" (str (first url))))
-    (str root-url "/" url)
-
-    ;; suffix of root-url and url are the same
-    (= (last (string/split root-url #"/"))
-       (second (string/split url #"/")))
-    (str root-url (subs url (inc (count (second (string/split url #"/"))))))
-
-    (and (not= "/" (str (last root-url)))
-         (= "/" (str (first url))))
-    (str root-url url)
-
-    (string/starts-with? url "javascript:")
-    url
-
-    (string/starts-with? url "mailto:")
-    url
-
-    :else (str root-url url)))
+    (let [root-url (URL. root-url)
+          url (URL. root-url url)]
+      (str url))))
