@@ -197,14 +197,23 @@
                  "SparkNano B.V. announced today that it has closed a funding round of 5.5M EUR. The investment was led by Air Liquide Venture Capital (ALIAD, France) and was supported by Dutch investors Somerset Capital Partners and Invest-NL as well as the existing investors Innovation Industries, the Brabant Development Company (BOM) and TNO.",
                  :published-date nil}]
                (take 3 results)))
-        ;; TODO this 3 should not be found
-        ;; A way to adress this is to say that if some contents are found with description or published-date, then the items without can be removed
-        ;; Another is the "news" prefix for legit URL
-        (is (= [{:link "http://company.com/portfolio", :title "Portfolio", :description nil, :published-date nil}
-
-                {:link "http://company.com/sustainability-related-disclosures",
-                 :title "Sustainability Related Disclosures",
+        (is (= [{:link
+                 "http://company.com/news/pharrowtech-raises-eu15-million-in-series-a-funding-to-develop-worlds-first-viable-wireless-alternative-for-optical-fiber",
+                 :title
+                 "May 12, 2022 - Press-release - Pharrowtech raises €15 million in Series A funding to develop world 's first viable wireless alternative for optical fiber - Pharrowtech, a leader in the design and development of millimeter wave (mmWave) hardware and software for next-generation wireless applications, today announces the closure of its €15 million Series A funding round to continue developing next-generation 60 GHz wireless RF transceivers and antenna technology.",
+                 :description
+                 "Pharrowtech, a leader in the design and development of millimeter wave (mmWave) hardware and software for next-generation wireless applications, today announces the closure of its €15 million Series A funding round to continue developing next-generation 60 GHz wireless RF transceivers and antenna technology.",
+                 :published-date #inst "2022-05-12T00:00:00.000-00:00"}
+                {:link "http://company.com/news/portfolio-company-phix-enters-next-growth-phase",
+                 :title
+                 "Jul 27, 2022 - News - Portfolio company PhiX enters next growth phase - To continue to support their customers, PHIX secured €3 million in new capital for the short term and €20 million for the long term from the National Growth Fund. In addition, PHIX will occupy a new building to support further industrialization and scaling of photonic chip packaging in large volumes.",
                  :description nil,
-                 :published-date nil}
-                {:link "http://company.com/team", :title "Team - VI", :description nil, :published-date nil}]
-               (take-last 3 results)))))))
+                 :published-date #inst "2022-07-27T00:00:00.000-00:00"}
+                {:link "http://company.com/news/protealis-extended-a-round",
+                 :title
+                 "Sep 2, 2021 - Press-release - Sustainable protein seed start-up Protealis doubles capital upon closing its extended A-round - The Ghent-based company Protealis, a spin-off from VIB and ILVO, was incorporated earlier this year backed by 6 Mio EUR VC funds. Now, Protealis raised an additional 5.7 Mio EUR in its extended A-round.",
+                 :description
+                 "The Ghent-based company Protealis, a spin-off from VIB and ILVO, was incorporated earlier this year backed by 6 Mio EUR VC funds. Now, Protealis raised an additional 5.7 Mio EUR in its extended A-round.",
+                 :published-date nil}]
+               (take-last 3 results))
+            "All the results are prefix by 'news'")))))

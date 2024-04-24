@@ -36,11 +36,15 @@
   "Cleanup urls that are not intresting and not from the same domain.
    urls are expected to be absolutes"
   [root-url urls]
-  (->> urls
-       (remove string/blank?)
-       (remove #(= root-url %))
-       (remove #(= (str root-url "/") %))
-       (filter #(string/starts-with? % root-url))
-       (remove #(re-find #"(?i)#|/author/|/terms-and-privacy/|/article$|/articles$|/blog$|/blog/$|/contact$|/contact/$|/news$|/news/$|/tag$|/tag/$|/about$|/about-us$|/about-us/$|/privacypolicy|/terms-and-privacy/|javascript:|mailto:|all-posts$|all-posts/$|privacy-policy$"
-                         %))
-       distinct))
+  (let [filter-urls (->> urls
+                         (remove string/blank?)
+                         (remove #(= root-url %))
+                         (remove #(= (str root-url "/") %))
+                         (filter #(string/starts-with? % root-url))
+                         (remove #(re-find #"(?i)#|/author/|/terms-and-privacy/|/article$|/articles$|/blog$|/blog/$|/contact$|/contact/$|/news$|/news/$|/tag$|/tag/$|/about$|/about-us$|/about-us/$|/privacypolicy|/terms-and-privacy/|javascript:|mailto:|all-posts$|all-posts/$|privacy-policy$"
+                                           %))
+                         distinct)
+        prefix-urls (filter #(re-find #"/blog/..*|/article/..*|/post..*|/news..*" %) filter-urls)]
+    (if (<= 3 (count prefix-urls))
+      prefix-urls
+      filter-urls)))
