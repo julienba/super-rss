@@ -70,10 +70,10 @@
 (def page-crawl-limit 20)
 
 (defn poor-man-rss
-  "Try to create and RSS feed using the sitemap.
+  "Try to create an RSS feed using the sitemap.
    Limitation:
-    - page has to match common/blog-url?
-    - we only read 30 pages (arbitrary limit to avoid crawling too much of a website)"
+   - page has to match common/blog-url?
+   - read only the first pages (arbitrary limit to avoid crawling too much of a website)"
   [url {:keys [handlers]}]
   (let [sitemap-url (if (string/ends-with? url ".xml")
                       url
@@ -88,7 +88,14 @@
                :else
 
                (when-let [sitemap-contents (sitemap-url->sitemap-contents sitemap-url)]
-                 (let [clean-sitemap-contents (->> sitemap-contents
+                 (let [sitemap-contents-filter (->> sitemap-contents
+                                                    (remove #(nil? (:url %)))
+                                                    (filter #(re-find common/article-prefix (:url %))))
+                       urls-prefixed? (< 2 (count sitemap-contents-filter))
+                       clean-sitemap-contents (if urls-prefixed?
+                                                sitemap-contents-filter
+                                                sitemap-contents)
+                       clean-sitemap-contents (->> clean-sitemap-contents
                                                    (remove nil?)
                                                    (remove #(nil? (:url %)))
                                                    (filter #(common/blog-url? (:url %))))]
