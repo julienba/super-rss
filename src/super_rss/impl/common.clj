@@ -32,6 +32,9 @@
         protocol (.getProtocol url-obj)]
     (str protocol "://" host "/")))
 
+(def ^:deprecated article-prefix
+  #"(?i)#|^/blog/|^blog/|^/news/|^news/|^/articles/|^articles/")
+
 (defn cleanup-urls
   "Cleanup urls that are not intresting and not from the same domain.
    urls are expected to be absolutes"
