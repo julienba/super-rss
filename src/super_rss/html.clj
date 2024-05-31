@@ -2,10 +2,9 @@
   (:require [clojure.core.cache :as cache]
             [clojure.string :as string]
             [clj-http.client :as http]
-            [hickory.core :as h]
-            [hickory.select :as hs]
             [net.cgrand.enlive-html :as html]
-            [super-rss.date :as date]))
+            [super-rss.date :as date]
+            [super-rss.hickory-zipper :as hickory-zipper]))
 
 (def headers {"User-Agent" "super-rss"})
 
@@ -16,15 +15,14 @@
     (let [data (html/html-snippet html {:headers headers})]
       data)))
 
-(defn- html->hickory [html-content]
-  (when-let [content (some-> html-content h/parse h/as-hickory)]
-    (first (hs/select (hs/child (hs/tag :html)) content))))
+(defn- body->content-tree [body root-url]
+  (hickory-zipper/cleanup-anchors (hickory-zipper/string->zipper body) root-url))
 
 (defn fetch-hickory
   "Fetch an url and return and enlive version of the body"
   [url]
   (when-let [body (:body (http/get url {:headers headers}))]
-    (html->hickory body)))
+    (body->content-tree body url)))
 
 ; ~ Cache ======================================================================
 (defn- create-cache []

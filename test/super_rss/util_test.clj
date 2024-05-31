@@ -10,7 +10,7 @@
   (is (= "https://website.com/blog/1" (sut/url->absolute-url "https://website.com/" "/blog/1")))
   (is (= "https://website.com/1" (sut/url->absolute-url "https://website.com/" "/1")))
   (is (= "https://website.com/1" (sut/url->absolute-url "https://website.com/" "1")))
-  (is (= "https://website.com/blog/1" (sut/url->absolute-url "https://website.com/blog" "/1")))
+  (is (= "https://website.com/1" (sut/url->absolute-url "https://website.com/blog" "/1")))
   (is (= "https://website.com/blog/1" (sut/url->absolute-url "https://website.com/blog/" "1")))
   (is (= "http://a.com/1" (sut/url->absolute-url "https://website.com/" "http://a.com/1")))
   (is (= "http://company.com/news/inn" (sut/url->absolute-url "http://company.com/news" "/news/inn"))))

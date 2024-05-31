@@ -1,7 +1,9 @@
 (ns super-rss.impl.common
-  (:require [clojure.string :as string]
-            [super-rss.util :as util])
+  (:require [clojure.string :as string])
   (:import (java.net URL)))
+
+(def ignore-href-pattern
+  (re-pattern "(?i)#|instagram|facebook|twitter|linkedin|/terms-and-privacy/|^/author|^/privacypolicy/|privacypolicy.html|^mailto:|^javascript:"))
 
 (def ^:private post-prefix #{"/post/"
                              "/blog/"
@@ -23,37 +25,26 @@
        (not (string/ends-with? url "/news/"))
        (boolean (seq (re-find #"[a-zA-Z]+" (last (string/split url #"/")))))))
 
-;; TODO duplicated of super-rss.util but this one does nto return the `/`
+;; TODO duplicated of super-rss.util but this one does not return the `/`
 (defn get-root-url [url]
   (let [url-obj (URL. url)
         host (.getHost url-obj)
         protocol (.getProtocol url-obj)]
     (str protocol "://" host "/")))
 
-(def ^:private bad-pages
-  #{"/blog/" "/news/" "/category/" "/author/" "/tags/"
-    "/about"
-    "/contact"})
-
-(def ignore-href-pattern
-  (re-pattern "(?i)#|instagram|facebook|twitter|linkedin|/terms-and-privacy/|^/author|^/privacypolicy/|privacypolicy.html|^mailto:|^javascript:"))
-
-(def article-prefix
-  #"(?i)#|^/blog/|^blog/|^/news/|^news/|^/articles/|^articles/")
-
-(defn- clean-by-prefix [urls]
-  (let [urls-prefixed (filter #(re-find article-prefix %) urls)]
-    (if (< 2 (count urls-prefixed))
-      urls-prefixed
-      urls)))
-
-(defn cleanup-urls [root-url urls]
-  (->> urls
-       (remove string/blank?)
-       (remove #(= "/" %))
-       (map #(string/replace-first % root-url "/"))
-       (remove #(re-find ignore-href-pattern %))
-       (clean-by-prefix)
-       (remove #(get bad-pages %))
-       distinct
-       (map #(util/url->absolute-url root-url %))))
+(defn cleanup-urls
+  "Cleanup urls that are not intresting and not from the same domain.
+   urls are expected to be absolutes"
+  [root-url urls]
+  (let [filter-urls (->> urls
+                         (remove string/blank?)
+                         (remove #(= root-url %))
+                         (remove #(= (str root-url "/") %))
+                         (filter #(string/starts-with? % root-url))
+                         (remove #(re-find #"(?i)#|/author/|/terms-and-privacy/|/article$|/articles$|/blog$|/blog/$|/contact$|/contact/$|/news$|/news/$|/tag$|/tag/$|/about$|/about-us$|/about-us/$|/privacypolicy|/terms-and-privacy/|javascript:|mailto:|all-posts$|all-posts/$|privacy-policy$"
+                                           %))
+                         distinct)
+        prefix-urls (filter #(re-find #"/blog/..*|/article/..*|/post..*|/news..*" %) filter-urls)]
+    (if (<= 3 (count prefix-urls))
+      prefix-urls
+      filter-urls)))

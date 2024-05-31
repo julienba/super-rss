@@ -78,6 +78,9 @@
        :published-date (when (:date extra-content)
                          (date/local-date->date (:date extra-content)))})))
 
+;; Minimum number of nodes that needs to contains feed-like information
+(def min-node 2)
+
 (defn- find-list*
   "Explore parent nodes to see if one is a list of content"
   [root-url content href]
@@ -112,16 +115,18 @@
                        z/children
                        childs->entry)]
       (cond
-        (< 2 (count results0)) results0
-        (< 2 (count results1)) results1
-        (< 2 (count results2)) results2
-        (< 2 (count results3)) results3
-        (< 2 (count results4)) results4
+        (< min-node (count results0)) results0
+        (< min-node (count results1)) results1
+        (< min-node (count results2)) results2
+        (< min-node (count results3)) results3
+        (< min-node (count results4)) results4
         :else nil))
     (throw (ex-info "The href cannot be found in the document"
                     {:href href
                      :root-url root-url}))))
 
+;; TODO once found the content should be update to not have to parse the entire structure again
+;; find-list* should return the modify content as well
 (defn- find-list [source-url content hrefs]
   (loop [href-set (set hrefs)
          explored #{}
@@ -135,7 +140,8 @@
       (get explored (first href-set))
       (recur (disj href-set (first href-set)) explored results)
 
-      :else (let [founds (find-list* source-url content (first href-set))
+      :else (let [founds (->> (find-list* source-url content (first href-set))
+                              (filter #(get href-set (:link %))))
                   href-found-set (set (map :link founds))]
               (if (empty? founds)
                 (recur (disj href-set (first href-set))
@@ -150,5 +156,5 @@
         root-url (common/get-root-url url)
         all-links (->> (find-all-links root-url content)
                        (remove #(= url %)))]
-    (->> (find-list root-url content all-links)
-         (map (fn [result] (update result :link #(util/url->absolute-url url %)))))))
+    (find-list root-url content all-links)))
+
