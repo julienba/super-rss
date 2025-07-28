@@ -16,3 +16,14 @@ pom.xml.asc
 .clj-kondo/metosin/
 .lsp/
 .portal/
+.cursor/
+# clj-kondo: ignore all except our defined config
+.clj-kondo/*
+!.clj-kondo/README.md
+!.clj-kondo/ignore
+!.clj-kondo/config.edn
+!.clj-kondo/config/
+!.clj-kondo/src/
+!.clj-kondo/test/
+!.clj-kondo/macros/
+
