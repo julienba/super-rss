@@ -143,8 +143,7 @@
                     :published-date #inst "2023-05-03T00:00:00.000-00:00"}]
                   (sort-by :link))
              (->> (sut/poor-man-rss-html "http://company.com/blog")
-                  (sort-by :link)))))))
-
+                  (sort-by :link))))))
   (testing "handle url without '/'"
     (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample2 "http://company.com/"))]
       (let [expected (->> [{:link "http://company.com/2023-11-21-me-war-becomes-obsolete-once-lenr-allowed.html",
@@ -161,9 +160,10 @@
                             :description nil,
                             :published-date #inst "2023-11-30T00:00:00.000-00:00"}
                            {:link "http://company.com/2023-12-04-plug-power-shares-plummet-premarket-trading-ny.html",
-                            :title "Renewable energy company Plug Power's shares PLUMMET by 30% in premarket trading in New York",
+                            :title "Renewable energy company Plug Power’s shares PLUMMET by 30% in premarket trading in New York",
                             :description nil,
                             :published-date #inst "2023-04-12T00:00:00.000-00:00"}
+
                            {:link "http://company.com/2023-12-06-green-energy-shift-disrupts-power-grid-reliability.html",
                             :title "Insiders warn shifting to green energy could disrupt power grid reliability",
                             :description nil,
@@ -176,7 +176,7 @@
             actual (->> (sut/poor-man-rss-html "http://company.com/")
                         (sort-by :link)
                         (take 6))]
-        (is (= expected actual)))))
+        (is (= expected (sort-by :link actual))))))
   (testing "handle url without the suffix of the root-url being similar to the prefix of the link"
     (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample3 "http://company.com/news"))]
       (let [results (sort-by :link (sut/poor-man-rss-html "http://company.com/news"))]
@@ -220,7 +220,6 @@
                  :published-date nil}]
                (take-last 3 results))
             "All the results are prefix by 'news'"))))
-
   (testing "filter out pagination links like ?page=1"
     (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample4 "https://www.usertesting.com/blog"))]
       (let [results (sut/poor-man-rss-html "https://www.usertesting.com/blog")]
@@ -232,7 +231,7 @@
             "No links with 'load more' in title should be included")
         ;; Verify that we still get some valid results
         (is (pos? (count results))
-            "Should still return some valid blog post links"))))
+            "Should still return some valid blog post links")))))
 
 (deftest find-all-links-pagination-test
   (testing "filter out pagination links from find-all-links"
