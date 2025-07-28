@@ -31,7 +31,7 @@
        :params {:method :direct-rss
                 :url feed-url}})))
 
-;; deprecated
+;; Deprecated
 (defmethod fetch :page-links [_ url opts]
   {:data (impl.links/poor-man-rss-html url opts)
    :params {:method :page-links
@@ -60,20 +60,17 @@
    {:keys [timeout method method-options]
     :or {timeout 10000 method-options [:find-rss-url :sitemap :smart-links]}}
    {:keys [_already-ingest?] :as handler-fns}]
-  (if method
-    (when-let [result (fetch method url {:timeout timeout :handlers handler-fns})]
-      {:params (:params result)
-       :title (:title result)
-       :description (:description result)
-       :results (:data result)})
-    (loop [[method & methods] method-options]
-      (if (nil? method)
-        nil
-        (let [{:keys [data title description params] :as result} (fetch method url {:timeout timeout :handlers handler-fns})]
-          (log/infof "Fetch %s using method %s" url method)
-          (if (or (nil? result) (empty? data))
-            (recur methods)
-            {:params params
-             :title title
-             :description description
-             :results data}))))))
+  (letfn [(build-result [result]
+            {:params (:params result)
+             :title (:title result)
+             :description (:description result)
+             :results (:data result)})
+          (try-method [method]
+            (when-let [result (fetch method url {:timeout timeout :handlers handler-fns})]
+              (when-not (empty? (:data result))
+                (log/infof "Fetch %s using method %s" url method)
+                (build-result result))))]
+    (if method
+      (try-method method)
+      (some try-method method-options))))
+
