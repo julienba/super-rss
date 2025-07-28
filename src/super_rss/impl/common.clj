@@ -44,7 +44,7 @@
                          (remove #(= root-url %))
                          (remove #(= (str root-url "/") %))
                          (filter #(string/starts-with? % root-url))
-                         (remove #(re-find #"(?i)#|/author/|/terms-and-privacy/|/article$|/articles$|/blog$|/blog/$|/contact$|/contact/$|/news$|/news/$|/tag$|/tag/$|/about$|/about-us$|/about-us/$|/privacypolicy|/terms-and-privacy/|javascript:|mailto:|all-posts$|all-posts/$|privacy-policy$"
+                         (remove #(re-find #"(?i)#|/author/|/terms-and-privacy/|/article$|/articles$|/blog$|/blog/$|/contact$|/contact/$|/news$|/news/$|/tag$|/tag/$|/about$|/about-us$|/about-us/$|/privacypolicy|/terms-and-privacy/|javascript:|mailto:|all-posts$|all-posts/$|privacy-policy$|/page/\d+|/p/\d+|/posts/\d+|/articles/\d+|/blog/\d+|/news/\d+"
                                            %))
                          distinct)
         prefix-urls (filter #(re-find #"/blog/..*|/article/..*|/post..*|/news..*" %) filter-urls)]

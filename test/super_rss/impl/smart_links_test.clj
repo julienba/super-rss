@@ -1,5 +1,6 @@
 (ns super-rss.impl.smart-links-test
   (:require [clojure.java.io :as io]
+            [clojure.string :as string]
             [clojure.test :refer [is deftest testing]]
             [super-rss.impl.smart-links :as sut]
             [super-rss.html :as rss.html]))
@@ -13,6 +14,7 @@
 (def sample1 (load-html "smart_links/sample1.html"))
 (def sample2 (load-html "smart_links/sample2.html"))
 (def sample3 (load-html "smart_links/sample3.html"))
+(def sample4 (load-html "smart_links/sample4.html"))
 
 (deftest find-all-links-test
   (is (= ["http://company.com/framework/"
@@ -79,120 +81,121 @@
     (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample1 "http://company.com/blog"))]
 
       (is (= (->> [{:link "http://company.com/a-simple-tool-for-load-testing-stateful-systems-using-clojure/",
-                    :title "A simple tool for load testing stateful systems using Clojure - 13 Jan 2022 - Bernard Labno",
+                    :title "A simple tool for load testing stateful systems using Clojure",
                     :description "A simple tool for load testing stateful systems using Clojure",
                     :published-date #inst "2022-01-13T00:00:00.000-00:00"}
                    {:link "http://company.com/betting-the-company-on-clojurescript/",
-                    :title "Betting the Company on ClojureScript - 20 Feb 2019 - Anthony Maley",
+                    :title "Betting the Company on ClojureScript",
                     :description "Betting the Company on ClojureScript",
                     :published-date #inst "2019-02-20T00:00:00.000-00:00"}
                    {:link "http://company.com/company-expands-into-tiruchirappalli-india/",
-                    :title "Expanding Horizons and embracing opportunities in Tiruchirappalli, India - 22 Jul 2023 - Anthony Maley",
+                    :title "Expanding Horizons and embracing opportunities in Tiruchirappalli, India",
                     :description "Expanding Horizons and embracing opportunities in Tiruchirappalli, India",
                     :published-date #inst "2023-07-22T00:00:00.000-00:00"}
                    {:link
                     "http://company.com/company-io-recognized-as-one-of-atlantas-fastest-growing-companies-at-the-2022-atlanta-pacesetter-awards/",
                     :title
-                    "company.com recognized as one of Atlanta's fastest-growing companies at the 2022 Atlanta Pacesetter Awards - 29 Apr 2022 - company.com",
+                    "company.com recognized as one of Atlanta's fastest-growing companies at the 2022 Atlanta Pacesetter Awards 29 Apr 2022 company.com",
                     :description nil,
                     :published-date #inst "2022-04-29T00:00:00.000-00:00"}
                    {:link "http://company.com/company-selected-as-a-venture-atlanta-2023-presenting-company/",
-                    :title "company.com Selected as a Venture Dallas 2023 Presenting Company - 14 Sep 2023 - company.com",
+                    :title "company.com Selected as a Venture Dallas 2023 Presenting Company 14 Sep 2023 company.com",
                     :description nil,
                     :published-date #inst "2023-09-14T00:00:00.000-00:00"}
                    {:link "http://company.com/develop-a-digital-key-app-using-company-sdk/",
-                    :title "Develop a Digital Key app using company.com - 23 Nov 2021 - Michelle Lim",
+                    :title "Develop a Digital Key app using company.com",
                     :description nil,
                     :published-date #inst "2021-11-23T00:00:00.000-00:00"}
                    {:link "http://company.com/developing-mobile-digital-key-applications-with-clojurescript/",
-                    :title "Developing mobile digital key applications with ClojureScript - 20 May 2021 - David Nolen",
+                    :title "Developing mobile digital key applications with ClojureScript",
                     :description nil,
                     :published-date #inst "2021-05-20T00:00:00.000-00:00"}
                    {:link "http://company.com/finding-our-rhythm-a-creative-approach-to-documentation-woes/",
                     :title
-                    "Finding Our Rhythm - A Creative Approach to Documentation Woes - 24 Apr 2023 - Jordan Miller with Heather Haylett",
+                    "Finding Our Rhythm - A Creative Approach to Documentation Woes",
                     :description "Finding Our Rhythm - A Creative Approach to Documentation Woes",
                     :published-date #inst "2023-04-24T00:00:00.000-00:00"}
                    ; TODO Ideally it should not be found
                    {:link "http://company.com/framework/", :title "Framework", :description nil, :published-date nil}
                    {:link "http://company.com/how-we-use-react-context-to-customize-our-apps-for-our-clients/",
-                    :title "How we use React Context to customize our apps for our clients - 07 Dec 2021 - Heather Haylett",
+                    :title "How we use React Context to customize our apps for our clients",
                     :description "How we use React Context to customize our apps for our clients",
                     :published-date #inst "2021-12-07T00:00:00.000-00:00"}
                    {:link "http://company.com/is-1-password-still-1-password-too-many/",
-                    :title "Is \"1\" password still \"1\" password too many? - 18 Feb 2019 - Anthony Maley",
+                    :title "Is \"1\" password still \"1\" password too many?",
                     :description "Is \"1\" password still \"1\" password too many?",
                     :published-date #inst "2019-02-18T00:00:00.000-00:00"}
                    {:link "http://company.com/return-of-the-fob/",
-                    :title "Return of the fob - 25 Mar 2021 - Anthony Maley",
+                    :title "Return of the fob",
                     :description "Return of the fob",
                     :published-date #inst "2021-03-25T00:00:00.000-00:00"}
                    {:link "http://company.com/reversing-sherlock/",
-                    :title "Reversing Sherlock - 24 Jun 2020 - Anthony Maley",
+                    :title "Reversing Sherlock",
                     :description "Reversing Sherlock",
                     :published-date #inst "2020-06-24T00:00:00.000-00:00"}
                    {:link "http://company.com/the-value-of-principles/",
-                    :title "The value of principles - 16 Dec 2021 - João Paulo Soares",
+                    :title "The value of principles 16 Dec 2021 João Paulo Soares",
                     :description "The value of principles",
                     :published-date #inst "2021-12-16T00:00:00.000-00:00"}
                    {:link "http://company.com/writing-a-simple-mcumgr-client-with-rust/",
-                    :title "Writing a simple mcumgr client with Rust - 03 May 2023 - Frank Buss",
+                    :title "Writing a simple mcumgr client with Rust",
                     :description nil,
                     :published-date #inst "2023-05-03T00:00:00.000-00:00"}]
                   (sort-by :link))
              (->> (sut/poor-man-rss-html "http://company.com/blog")
-                  (sort-by :link))))))
+                  (sort-by :link)))))))
 
   (testing "handle url without '/'"
     (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample2 "http://company.com/"))]
-      (is (= (->> [{:link "http://company.com/2023-11-21-me-war-becomes-obsolete-once-lenr-allowed.html",
-                    :title
-                    "War in the Middle East will become OBSOLETE once Low Energy Nuclear Reactions are allowed to flourish, providing low-cost energy to the world",
-                    :description nil,
-                    :published-date #inst "2023-06-12T00:00:00.000-00:00"}
-                   {:link "http://company.com/2023-11-27-things-you-need-to-prepare-blackouts-emergencies.html",
-                    :title "Things you need to prepare in order to deal with blackouts and emergencies",
-                    :description nil,
-                    :published-date #inst "2023-11-27T00:00:00.000-00:00"}
-                   {:link "http://company.com/2023-11-30-ford-resumes-michigan-ev-plant-reduces-capacity.html",
-                    :title "Ford resumes Michigan EV battery plant but reduces production capacity by 40%, drops about 800 jobs",
-                    :description nil,
-                    :published-date #inst "2023-11-30T00:00:00.000-00:00"}
-                   {:link "http://company.com/2023-12-04-plug-power-shares-plummet-premarket-trading-ny.html",
-                    :title "Renewable energy company Plug Power’s shares PLUMMET by 30% in premarket trading in New York",
-                    :description nil,
-                    :published-date #inst "2023-04-12T00:00:00.000-00:00"}
-                   {:link "http://company.com/2023-12-06-green-energy-shift-disrupts-power-grid-reliability.html",
-                    :title "Insiders warn shifting to green energy could disrupt power grid reliability",
-                    :description nil,
-                    :published-date #inst "2023-06-12T00:00:00.000-00:00"}
-                   {:link "http://company.com/2023-12-06-peter-koenig-west-energy-suicide-globalist-agenda.html",
-                    :title nil,
-                    :description nil,
-                    :published-date nil}]
-                  (sort-by :link))
-             (->> (sut/poor-man-rss-html "http://company.com/")
-                  (sort-by :link)
-                  (take 6))))))
+      (let [expected (->> [{:link "http://company.com/2023-11-21-me-war-becomes-obsolete-once-lenr-allowed.html",
+                            :title
+                            "War in the Middle East will become OBSOLETE once Low Energy Nuclear Reactions are allowed to flourish, providing low-cost energy to the world",
+                            :description nil,
+                            :published-date #inst "2023-06-12T00:00:00.000-00:00"}
+                           {:link "http://company.com/2023-11-27-things-you-need-to-prepare-blackouts-emergencies.html",
+                            :title "Things you need to prepare in order to deal with blackouts and emergencies",
+                            :description nil,
+                            :published-date #inst "2023-11-27T00:00:00.000-00:00"}
+                           {:link "http://company.com/2023-11-30-ford-resumes-michigan-ev-plant-reduces-capacity.html",
+                            :title "Ford resumes Michigan EV battery plant but reduces production capacity by 40%, drops about 800 jobs",
+                            :description nil,
+                            :published-date #inst "2023-11-30T00:00:00.000-00:00"}
+                           {:link "http://company.com/2023-12-04-plug-power-shares-plummet-premarket-trading-ny.html",
+                            :title "Renewable energy company Plug Power's shares PLUMMET by 30% in premarket trading in New York",
+                            :description nil,
+                            :published-date #inst "2023-04-12T00:00:00.000-00:00"}
+                           {:link "http://company.com/2023-12-06-green-energy-shift-disrupts-power-grid-reliability.html",
+                            :title "Insiders warn shifting to green energy could disrupt power grid reliability",
+                            :description nil,
+                            :published-date #inst "2023-06-12T00:00:00.000-00:00"}
+                           {:link "http://company.com/2023-12-06-peter-koenig-west-energy-suicide-globalist-agenda.html",
+                            :title nil,
+                            :description nil,
+                            :published-date nil}]
+                          (sort-by :link))
+            actual (->> (sut/poor-man-rss-html "http://company.com/")
+                        (sort-by :link)
+                        (take 6))]
+        (is (= expected actual)))))
   (testing "handle url without the suffix of the root-url being similar to the prefix of the link"
     (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample3 "http://company.com/news"))]
       (let [results (sort-by :link (sut/poor-man-rss-html "http://company.com/news"))]
         (is (= [{:link "http://company.com/news/autofill-technologies-pre-series-a-funding",
                  :title
-                 "Oct 28, 2021 - Press-release - AutoFill Technologies pre-Series A funding - AutoFill, a Dutch deep tech company specialising in inspection workflow processes for the automotive and rail industries, has secured €2.6 million in pre-series A funding.",
+                 "Oct 28, 2021 Press-release AutoFill Technologies pre-Series A funding AutoFill, a Dutch deep tech company specialising in inspection workflow processes for the automotive and rail industries, has secured €2.6 million in pre-series A funding.",
                  :description
                  "AutoFill, a Dutch deep tech company specialising in inspection workflow processes for the automotive and rail industries, has secured €2.6 million in pre-series A funding.",
                  :published-date #inst "2021-10-28T00:00:00.000-00:00"}
                 {:link "http://company.com/news/axelera-launches-seed-round",
                  :title
-                 "Sep 15, 2021 - Press-release - Dutch AI semiconductor startup Axelera AI launches with $12 million seed round - Stealth company incubated by blockchain unicorn Bitfury Group and global nanoelectronics R &D center imec launches with $12 million seed round",
+                 "Sep 15, 2021 Press-release Dutch AI semiconductor startup Axelera AI launches with $12 million seed round Stealth company incubated by blockchain unicorn Bitfury Group and global nanoelectronics R &D center imec launches with $12 million seed round",
                  :description
                  "Stealth company incubated by blockchain unicorn Bitfury Group and global nanoelectronics R &D center imec launches with $12 million seed round",
                  :published-date #inst "2021-09-15T00:00:00.000-00:00"}
                 {:link
                  "http://company.com/news/dutch-spatial-ald-company-sparknano-secures-further-funding-to-scale-up-spatial-atomic-layer-deposition-for-energy-applications",
                  :title
-                 "Nov 3, 2022 - Press-release - Dutch Spatial-ALD company SparkNano secures further funding to scale-up Spatial Atomic Layer Deposition for energy applications - SparkNano B.V. announced today that it has closed a funding round of 5.5M EUR. The investment was led by Air Liquide Venture Capital (ALIAD, France) and was supported by Dutch investors Somerset Capital Partners and Invest-NL as well as the existing investors Innovation Industries, the Brabant Development Company (BOM) and TNO.",
+                 "Nov 3, 2022 Press-release Dutch Spatial-ALD company SparkNano secures further funding to scale-up Spatial Atomic Layer Deposition for energy applications SparkNano B.V. announced today that it has closed a funding round of 5.5M EUR. The investment was led by Air Liquide Venture Capital (ALIAD, France) and was supported by Dutch investors Somerset Capital Partners and Invest-NL as well as the existing investors Innovation Industries, the Brabant Development Company (BOM) and TNO.",
                  :description
                  "SparkNano B.V. announced today that it has closed a funding round of 5.5M EUR. The investment was led by Air Liquide Venture Capital (ALIAD, France) and was supported by Dutch investors Somerset Capital Partners and Invest-NL as well as the existing investors Innovation Industries, the Brabant Development Company (BOM) and TNO.",
                  :published-date nil}]
@@ -200,20 +203,48 @@
         (is (= [{:link
                  "http://company.com/news/pharrowtech-raises-eu15-million-in-series-a-funding-to-develop-worlds-first-viable-wireless-alternative-for-optical-fiber",
                  :title
-                 "May 12, 2022 - Press-release - Pharrowtech raises €15 million in Series A funding to develop world 's first viable wireless alternative for optical fiber - Pharrowtech, a leader in the design and development of millimeter wave (mmWave) hardware and software for next-generation wireless applications, today announces the closure of its €15 million Series A funding round to continue developing next-generation 60 GHz wireless RF transceivers and antenna technology.",
+                 "May 12, 2022 Press-release Pharrowtech raises €15 million in Series A funding to develop world 's first viable wireless alternative for optical fiber Pharrowtech, a leader in the design and development of millimeter wave (mmWave) hardware and software for next-generation wireless applications, today announces the closure of its €15 million Series A funding round to continue developing next-generation 60 GHz wireless RF transceivers and antenna technology.",
                  :description
                  "Pharrowtech, a leader in the design and development of millimeter wave (mmWave) hardware and software for next-generation wireless applications, today announces the closure of its €15 million Series A funding round to continue developing next-generation 60 GHz wireless RF transceivers and antenna technology.",
                  :published-date #inst "2022-05-12T00:00:00.000-00:00"}
                 {:link "http://company.com/news/portfolio-company-phix-enters-next-growth-phase",
                  :title
-                 "Jul 27, 2022 - News - Portfolio company PhiX enters next growth phase - To continue to support their customers, PHIX secured €3 million in new capital for the short term and €20 million for the long term from the National Growth Fund. In addition, PHIX will occupy a new building to support further industrialization and scaling of photonic chip packaging in large volumes.",
+                 "Jul 27, 2022 News Portfolio company PhiX enters next growth phase To continue to support their customers, PHIX secured €3 million in new capital for the short term and €20 million for the long term from the National Growth Fund. In addition, PHIX will occupy a new building to support further industrialization and scaling of photonic chip packaging in large volumes.",
                  :description nil,
                  :published-date #inst "2022-07-27T00:00:00.000-00:00"}
                 {:link "http://company.com/news/protealis-extended-a-round",
                  :title
-                 "Sep 2, 2021 - Press-release - Sustainable protein seed start-up Protealis doubles capital upon closing its extended A-round - The Ghent-based company Protealis, a spin-off from VIB and ILVO, was incorporated earlier this year backed by 6 Mio EUR VC funds. Now, Protealis raised an additional 5.7 Mio EUR in its extended A-round.",
+                 "Sep 2, 2021 Press-release Sustainable protein seed start-up Protealis doubles capital upon closing its extended A-round The Ghent-based company Protealis, a spin-off from VIB and ILVO, was incorporated earlier this year backed by 6 Mio EUR VC funds. Now, Protealis raised an additional 5.7 Mio EUR in its extended A-round.",
                  :description
                  "The Ghent-based company Protealis, a spin-off from VIB and ILVO, was incorporated earlier this year backed by 6 Mio EUR VC funds. Now, Protealis raised an additional 5.7 Mio EUR in its extended A-round.",
                  :published-date nil}]
                (take-last 3 results))
-            "All the results are prefix by 'news'")))))
+            "All the results are prefix by 'news'"))))
+
+  (testing "filter out pagination links like ?page=1"
+    (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample4 "https://www.usertesting.com/blog"))]
+      (let [results (sut/poor-man-rss-html "https://www.usertesting.com/blog")]
+        ;; Verify that no pagination links are included in the results
+        (is (not-any? #(re-find #"\?page=" (:link %)) results)
+            "No pagination links with ?page= should be included")
+        ;; Verify that "Load more" links are filtered out
+        (is (not-any? #(re-find #"load\s*more" (string/lower-case (or (:title %) ""))) results)
+            "No links with 'load more' in title should be included")
+        ;; Verify that we still get some valid results
+        (is (pos? (count results))
+            "Should still return some valid blog post links"))))
+
+(deftest find-all-links-pagination-test
+  (testing "filter out pagination links from find-all-links"
+    (let [html-content (html->content-tree sample4 "https://www.usertesting.com/blog")
+          all-links (#'sut/find-all-links "https://www.usertesting.com/blog" html-content)]
+      ;; Verify that no pagination links are included in the results
+      (is (not-any? #(re-find #"\?page=" %) all-links)
+          "No pagination links with ?page= should be included in find-all-links results")
+      ;; Verify that we still get some valid results
+      (is (pos? (count all-links))
+          "Should still return some valid links"))))
+
+
+
+

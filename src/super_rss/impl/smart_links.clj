@@ -9,6 +9,36 @@
             [super-rss.impl.common :as common]
             [super-rss.util :as util]))
 
+(defn- is-pagination-link?
+  "Check if a link is a pagination link based on URL pattern and text"
+  [href title]
+  (let [href-lower (string/lower-case href)
+        title-lower (string/lower-case (or title ""))
+        pagination-url-patterns [#"/page/\d+"
+                                 #"/p/\d+"
+                                 #"/posts/\d+"
+                                 #"/articles/\d+"
+                                 #"/blog/\d+"
+                                 #"/news/\d+"
+                                 #"/\d+$"
+                                 #"/page-\d+"
+                                 #"/p-\d+"
+                                 #"\?page=\d+"]
+        pagination-text-patterns [#"^next\s*[→>]?$"
+                                  #"^previous\s*[←<]?$"
+                                  #"^page\s*\d+$"
+                                  #"^\d+$"
+                                  #"^older\s*posts?$"
+                                  #"^newer\s*posts?$"
+                                  #"^load\s*more$"
+                                  #"^show\s*more$"
+                                  #"^more\s*posts?$"
+                                  #"^earlier\s*posts?$"
+                                  #"^later\s*posts?$"]]
+    (or
+     (some #(re-find % href-lower) pagination-url-patterns)
+     (some #(re-find % title-lower) pagination-text-patterns))))
+
 (defn- find-all-links
   [root-url content]
   (->> (hs/select (hs/child (hs/tag :a)) content)
@@ -18,6 +48,37 @@
 
 (def min-length-anchor-href 10)
 (def min-length-anchor-content 12)
+
+(defn- clean-title
+  "Clean and normalize title text by removing common unwanted patterns"
+  [s]
+  (some-> s
+          string/trim
+          ;; Remove newlines and normalize whitespace
+          (string/replace #"\n" "")
+          (string/replace #"\s+" " ")
+          ;; Remove common category/navigation patterns (only specific ones)
+          (string/replace #"\s*[-→]\s*[-→]\s*(Product|Insight|Blog|News|Articles)$" "") ; " - → - Product" or " - → - Insight"
+          (string/replace #"\s*→\s*(Product|Insight|Blog|News|Articles)$" "") ; " → Product" or " → Insight"
+          ;; Remove date and author patterns (more comprehensive)
+          (string/replace #"\s*[-–]\s*\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4}\s*[-–]\s*[A-Za-z\s]+$" "") ; " - 13 Jan 2022 - Bernard Labno"
+          (string/replace #"\s*\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4}\s+[A-Za-z\s]+$" "") ; "13 Jan 2022 Bernard Labno"
+          (string/replace #"\s*\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4}$" "") ; "13 Jan 2022"
+          ;; Remove author patterns that might be concatenated
+          (string/replace #"\s+[A-Za-z\s]+\s+\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4}$" "") ; "Author Name 13 Jan 2022"
+          (string/replace #"\s+\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4}\s+[A-Za-z\s]+$" "") ; "13 Jan 2022 Author Name"
+          ;; Remove common navigation text
+          (string/replace #"\s*Read more\s*$" "")
+          (string/replace #"\s*Continue reading\s*$" "")
+          (string/replace #"\s*Learn more\s*$" "")
+          ;; Remove common blog navigation patterns (only at the end)
+          (string/replace #"\s*[-–]\s*Blog\s*$" "")
+          (string/replace #"\s*[-–]\s*News\s*$" "")
+          (string/replace #"\s*[-–]\s*Articles\s*$" "")
+          ;; Clean up any remaining extra whitespace
+          string/trim
+          ;; Don't return empty strings
+          (as-> s (when-not (string/blank? s) s))))
 
 (defn- clean-string [s]
   (some-> s
@@ -65,6 +126,7 @@
        first))
 
 (defn- find-title-near-anchor
+  "Look for title elements that are siblings or children of the anchor's parent"
   [anchor]
   (let [anchor-parent (when anchor (-> anchor :content first))
         siblings (when anchor-parent (html/select anchor-parent [:h1 :h2 :h3 :h4 :h5]))
@@ -81,7 +143,6 @@
                      (remove #(re-find common/ignore-href-pattern (get-in % [:attrs :href] ""))))
         main-anchor (if (= 1 (count anchors))
                       (first anchors)
-                      ;; Take the anchor with the longest content
                       (->> anchors
                            (remove #(map? (-> % :content first)))
                            (sort comp-content-length)
@@ -90,17 +151,19 @@
         content-title (-> main-anchor html/text)
         anchor-title (find-title-in-anchor main-anchor)
         nearby-title (find-title-near-anchor main-anchor)
-        extra-content (search-for-extra-content post-node)]
+        extra-content (search-for-extra-content post-node)
+        final-title (or (clean-title anchor-title)
+                        (clean-title nearby-title)
+                        (if (string/blank? content-title)
+                          (clean-title (:title extra-content))
+                          (clean-title content-title)))]
     (when-not (string/blank? link)
-      {:link link
-       :title (or (clean-string anchor-title)
-                  (clean-string nearby-title)
-                  (if (string/blank? content-title)
-                    (clean-string (:title extra-content))
-                    (clean-string content-title)))
-       :description (clean-string (:description extra-content))
-       :published-date (when (:date extra-content)
-                         (date/local-date->date (:date extra-content)))})))
+      (when-not (is-pagination-link? link final-title)
+        {:link link
+         :title final-title
+         :description (clean-string (:description extra-content))
+         :published-date (when (:date extra-content)
+                           (date/local-date->date (:date extra-content)))}))))
 
 ;; Minimum number of nodes that needs to contains feed-like information
 (def min-node 2)
@@ -149,7 +212,7 @@
                     {:href href
                      :root-url root-url}))))
 
-;; TODO once found the content should be update to not have to parse the entire structure again
+;; TODO Once found the content should be update to not have to parse the entire structure again
 ;; find-list* should return the modify content as well
 (defn- find-list [source-url content hrefs]
   (loop [href-set (set hrefs)
