@@ -55,25 +55,49 @@
     1
     0))
 
+(defn- find-title-in-anchor
+  "Look for title elements (h1, h2, h3, h4, h5) within the anchor"
+  [anchor]
+  (->> (html/select anchor [:h1 :h2 :h3 :h4 :h5])
+       (map html/text)
+       (map string/trim)
+       (remove string/blank?)
+       first))
+
+(defn- find-title-near-anchor
+  [anchor]
+  (let [anchor-parent (when anchor (-> anchor :content first))
+        siblings (when anchor-parent (html/select anchor-parent [:h1 :h2 :h3 :h4 :h5]))
+        children (html/select anchor [:h1 :h2 :h3 :h4 :h5])]
+    (->> (concat siblings children)
+         (map html/text)
+         (map string/trim)
+         (remove string/blank?)
+         first)))
+
 (defn- extract-feed-information [post-node]
   (let [anchors (->> (html/select post-node [:a])
                      (remove #(> min-length-anchor-href (count (get-in % [:attrs :href] ""))))
                      (remove #(re-find common/ignore-href-pattern (get-in % [:attrs :href] ""))))
         main-anchor (if (= 1 (count anchors))
                       (first anchors)
-                      ;; take the anchor with the longest content
+                      ;; Take the anchor with the longest content
                       (->> anchors
                            (remove #(map? (-> % :content first)))
                            (sort comp-content-length)
                            last))
         link (-> main-anchor :attrs :href)
         content-title (-> main-anchor html/text)
+        anchor-title (find-title-in-anchor main-anchor)
+        nearby-title (find-title-near-anchor main-anchor)
         extra-content (search-for-extra-content post-node)]
     (when-not (string/blank? link)
       {:link link
-       :title (if (string/blank? content-title)
-                (clean-string (:title extra-content))
-                (clean-string content-title))
+       :title (or (clean-string anchor-title)
+                  (clean-string nearby-title)
+                  (if (string/blank? content-title)
+                    (clean-string (:title extra-content))
+                    (clean-string content-title)))
        :description (clean-string (:description extra-content))
        :published-date (when (:date extra-content)
                          (date/local-date->date (:date extra-content)))})))
@@ -157,4 +181,3 @@
         all-links (->> (find-all-links root-url content)
                        (remove #(= url %)))]
     (find-list root-url content all-links)))
-
