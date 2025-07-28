@@ -3,7 +3,6 @@
             [clojure.tools.logging :as log]
             [super-rss.html :as html]
             [super-rss.impl.normal :as impl.normal]
-            [super-rss.impl.links :as impl.links]
             [super-rss.impl.sitemap :as impl.sitemap]
             [super-rss.impl.smart-links :as impl.smart-links]))
 
@@ -30,12 +29,6 @@
        :data (:entries result)
        :params {:method :direct-rss
                 :url feed-url}})))
-
-;; Deprecated
-(defmethod fetch :page-links [_ url opts]
-  {:data (impl.links/poor-man-rss-html url opts)
-   :params {:method :page-links
-            :url url}})
 
 (defmethod fetch :smart-links [_ url _]
   {:data (impl.smart-links/poor-man-rss-html url)

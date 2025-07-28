@@ -1,0 +1,1 @@
+{:linters {:deprecated-var {:level :info}}}
