@@ -27,3 +27,5 @@ pom.xml.asc
 !.clj-kondo/test/
 !.clj-kondo/macros/
 
+.clojure-mcp
+
