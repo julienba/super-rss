@@ -4,14 +4,14 @@
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.11.1"]
-                 [org.clojure/core.cache "1.0.225"]
-                 [org.clojure/tools.logging "1.2.4"]
-                 [org.slf4j/slf4j-log4j12 "1.7.36"]
+                 [org.clojure/core.cache "1.1.234"]
+                 [org.clojure/tools.logging "1.3.0"]
+                 [org.slf4j/slf4j-log4j12 "2.0.17"]
                  [log4j/log4j "1.2.17"]
-                 [clojure.java-time "0.3.3"]
-                 [enlive "1.1.6"]
+                 [clojure.java-time "1.4.3"]
+                 [enlive "1.1.6" :exclusions [org.jsoup/jsoup]]
                  [remus "0.2.2"]
-                 [org.clj-commons/hickory "0.7.4"]]
+                 [org.clj-commons/hickory "0.7.7"]]
   :repl-options {:init-ns super-rss.core}
   :repositories [["releases" {:url "https://repo.clojars.org"
                               :creds :gpg}]]
