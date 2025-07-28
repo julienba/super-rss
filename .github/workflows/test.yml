@@ -2,19 +2,35 @@ name: Clojure CI
 on: push
 
 jobs:
-  container-job:
+  clojure:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: lein deps
+      - name: Cache Clojure Dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs
+          key: cache-${{ hashFiles('**/deps.edn') }}
+          restore-keys: clojure-deps-
 
-    - name: Run tests
-      run: lein with-profile +test cloverage
+      - name: Prepare java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
 
-    - name: Upload code coverage results
-      uses: actions/upload-artifact@v3
-      with:
-        name: code-coverage-report
-        path: target/coverage
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@13.4
+        with:
+          cli: 1.11.1.1165    # Clojure CLI based on tools.deps
+          clj-kondo: 2025.06.05 # Clj-kondo
+
+      - name: Run Unit tests
+        run: clojure -M:test:runner
+
+      - name: "Lint with clj-kondo"
+        run: clj-kondo --lint deps.edn src test
