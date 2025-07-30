@@ -2,6 +2,7 @@
   (:require clojure.instant
             [clojure.tools.logging :as log]
             [super-rss.html :as html]
+            [super-rss.impl.flat-smart-links :as impl.flat-smart-links]
             [super-rss.impl.normal :as impl.normal]
             [super-rss.impl.sitemap :as impl.sitemap]
             [super-rss.impl.smart-links :as impl.smart-links]))
@@ -35,6 +36,12 @@
    :params {:method :smart-links
             :url url}})
 
+(defmethod fetch :flat-smart-links [_ url _]
+  {:data (impl.flat-smart-links/flat-poor-man-rss-html url)
+   :params {:method :flat-smart-links
+            :url url}})
+
+
 (defmethod fetch :sitemap [_ url opts]
   (let [result (impl.sitemap/poor-man-rss url opts)]
     {:data (:data result)
@@ -51,7 +58,7 @@
    Return a map of `:data` with the RSS feed and `:method` with the method used to retrieve the feed."
   [url
    {:keys [timeout method method-options]
-    :or {timeout 10000 method-options [:find-rss-url :sitemap :smart-links]}}
+    :or {timeout 10000 method-options [:find-rss-url :sitemap :smart-links :flat-smart-links]}}
    {:keys [_already-ingest?] :as handler-fns}]
   (letfn [(build-result [result]
             {:params (:params result)

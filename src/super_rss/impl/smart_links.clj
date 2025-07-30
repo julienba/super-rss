@@ -9,7 +9,7 @@
             [super-rss.impl.common :as common]
             [super-rss.util :as util]))
 
-(defn- is-pagination-link?
+(defn pagination-link?
   "Check if a link is a pagination link based on URL pattern and text"
   [href title]
   (let [href-lower (string/lower-case href)
@@ -39,7 +39,7 @@
      (some #(re-find % href-lower) pagination-url-patterns)
      (some #(re-find % title-lower) pagination-text-patterns))))
 
-(defn- find-all-links
+(defn find-all-links
   [root-url content]
   (->> (hs/select (hs/child (hs/tag :a)) content)
        (remove #(= "nofollow" (get-in % [:attrs :rel]))) ; be a good Netizen
@@ -137,7 +137,25 @@
          (remove string/blank?)
          first)))
 
-(defn- extract-feed-information [post-node]
+(defn- extract-title-from-url
+  "Extract a readable title from a URL path"
+  [url]
+  (when url
+    (let [path (-> url
+                   (string/replace #"^https?://[^/]+" "")
+                   (string/replace #"^/" "")
+                   (string/replace #"/$" ""))
+          segments (string/split path #"/")
+          last-segment (last segments)]
+      (when (and last-segment (not= last-segment ""))
+        (-> last-segment
+            (string/replace #"-" " ")
+            (string/replace #"_" " ")
+            (string/replace #"\.(html?|php|asp|aspx|jsp|cgi|pl|py|rb|js|css|xml|json|txt|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|tar|gz|rar|7z|mp3|mp4|avi|mov|wmv|flv|webm|ogg|wav|aac|flac|m4a|wma|ra|rm|rmvb|mkv|divx|xvid|3gp|3g2|amr|mid|midi|au|snd|aiff|aif|aifc|swf|fla|as|as3|mxml|swc|air|ipa|apk|deb|rpm|dmg|pkg|msi|exe|app|dll|so|dylib|a|lib|o|obj|class|jar|war|ear|sar|nar|kar|par|rar|zip|7z|tar|gz|bz2|xz|lzma|lz|lzo|lz4|zstd|lzop|lha|lzh|arc|arj|cab|msi|exe|com|bat|cmd|scr|pif|vbs|js|wsf|hta|chm|hlp|reg|inf|ini|cfg|conf|log|tmp|temp|bak|old|orig|save|swp|swo|swn)$" "")
+            string/trim
+            (as-> s (when-not (string/blank? s) s)))))))
+
+(defn extract-feed-information [post-node]
   (let [anchors (->> (html/select post-node [:a])
                      (remove #(> min-length-anchor-href (count (get-in % [:attrs :href] ""))))
                      (remove #(re-find common/ignore-href-pattern (get-in % [:attrs :href] ""))))
@@ -152,19 +170,23 @@
         anchor-title (find-title-in-anchor main-anchor)
         nearby-title (find-title-near-anchor main-anchor)
         extra-content (search-for-extra-content post-node)
+        url-title (extract-title-from-url link)
         final-title (or (clean-title anchor-title)
                         (clean-title nearby-title)
                         (if (string/blank? content-title)
                           (clean-title (:title extra-content))
-                          (clean-title content-title)))]
+                          (clean-title content-title))
+                        url-title)]
     (when-not (string/blank? link)
-      (when-not (is-pagination-link? link final-title)
+      (when-not (pagination-link? link final-title)
         {:link link
          :title final-title
          :description (clean-string (:description extra-content))
          :published-date (when (:date extra-content)
                            (date/local-date->date (:date extra-content)))}))))
 
+;; Minimum number of nodes that needs to contains feed-like information
+;; Minimum number of nodes that needs to contains feed-like information
 ;; Minimum number of nodes that needs to contains feed-like information
 (def min-node 2)
 

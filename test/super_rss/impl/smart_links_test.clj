@@ -3,6 +3,7 @@
             [clojure.string :as string]
             [clojure.test :refer [is deftest testing]]
             [super-rss.impl.smart-links :as sut]
+            [super-rss.impl.flat-smart-links :as flat-sut]
             [super-rss.html :as rss.html]))
 
 (defn load-html [file-path]
@@ -15,6 +16,7 @@
 (def sample2 (load-html "smart_links/sample2.html"))
 (def sample3 (load-html "smart_links/sample3.html"))
 (def sample4 (load-html "smart_links/sample4.html"))
+(def sample5 (load-html "smart_links/sample5.html"))
 
 (deftest find-all-links-test
   (is (= ["http://company.com/framework/"
@@ -163,13 +165,13 @@
                             :title "Renewable energy company Plug Power’s shares PLUMMET by 30% in premarket trading in New York",
                             :description nil,
                             :published-date #inst "2023-04-12T00:00:00.000-00:00"}
-
                            {:link "http://company.com/2023-12-06-green-energy-shift-disrupts-power-grid-reliability.html",
                             :title "Insiders warn shifting to green energy could disrupt power grid reliability",
                             :description nil,
                             :published-date #inst "2023-06-12T00:00:00.000-00:00"}
+                           ; NOTE I'm under the impression that there is something flacky here
                            {:link "http://company.com/2023-12-06-peter-koenig-west-energy-suicide-globalist-agenda.html",
-                            :title nil,
+                            :title "2023 12 06 peter koenig west energy suicide globalist agenda",
                             :description nil,
                             :published-date nil}]
                           (sort-by :link))
@@ -244,6 +246,31 @@
       (is (pos? (count all-links))
           "Should still return some valid links"))))
 
+(deftest flat-poor-man-rss-html-test
+  (testing "extract articles from beehiiv-style isolated containers using URL-to-title extraction"
+    (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample5 "https://builders-newsletter.beehiiv.com/"))]
+      (let [results (flat-sut/flat-poor-man-rss-html "https://builders-newsletter.beehiiv.com/")]
+        (is (pos? (count results))
+            "Should return some article links")
 
+        (is (some #(= (:link %) "https://builders-newsletter.beehiiv.com/p/the-future-belongs-to-those-who-build") results)
+            "Should find the future belongs to those who build article")
 
+        (is (some #(= (:link %) "https://builders-newsletter.beehiiv.com/p/bullsh-t-builds-nothing-this-does") results)
+            "Should find the bullsh-t builds nothing this does article")
 
+        (let [future-article (first (filter #(= (:link %) "https://builders-newsletter.beehiiv.com/p/the-future-belongs-to-those-who-build") results))
+              bullshit-article (first (filter #(= (:link %) "https://builders-newsletter.beehiiv.com/p/bullsh-t-builds-nothing-this-does") results))]
+
+          (is (= "the future belongs to those who build" (:title future-article))
+              "Should extract title from URL for future article")
+
+          (is (= "bullsh t builds nothing this does" (:title bullshit-article))
+              "Should extract title from URL for bullshit article")
+
+          (let [article-links (filter #(re-find #"/p/" (:link %)) results)]
+            (is (>= (count article-links) 10)
+                "Should find multiple article links with /p/ pattern")
+
+            (is (every? #(not (string/blank? (:title %))) article-links)
+                "All article links should have non-blank titles")))))))
