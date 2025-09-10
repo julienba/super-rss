@@ -27,7 +27,7 @@ jobs:
         uses: DeLaGuardo/setup-clojure@13.4
         with:
           cli: 1.12.2.15651165  # Clojure CLI based on tools.deps
-          clj-kondo: 2025.06.05 # Clj-kondo
+          clj-kondo: 2025.07.28 # Clj-kondo
 
       - name: Run Unit tests
         run: clojure -M:test:runner

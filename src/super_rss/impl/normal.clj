@@ -8,7 +8,7 @@
 
 (defn find-feed-url
   [website-url]
-  (let [content  (rss.html/get-web-page website-url)
+  (let [content  (rss.html/get-web-page website-url {"User-Agent" "super-rss rss-reader"})
         feed-url (->> (html/select content [:link])
                       (filter #(get #{"application/atom+xml" "application/rss+xml" "text/xml"}
                                     (get-in % [:attrs :type])))
@@ -22,7 +22,8 @@
   [url timeout]
   (try
     (let [{:keys [feed]} (remus/parse-url url {:insecure? true
-                                               :connection-timeout timeout})]
+                                               :connection-timeout timeout
+                                               :headers {"User-Agent" "super-rss rss-reader"}})]
       {:title       (some-> (:title feed) (string/trim))
        :description (some-> (:description feed) (string/trim))
        :entries     (:entries feed)})

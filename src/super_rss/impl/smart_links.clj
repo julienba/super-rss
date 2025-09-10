@@ -186,8 +186,6 @@
                            (date/local-date->date (:date extra-content)))}))))
 
 ;; Minimum number of nodes that needs to contains feed-like information
-;; Minimum number of nodes that needs to contains feed-like information
-;; Minimum number of nodes that needs to contains feed-like information
 (def min-node 2)
 
 (defn- find-list*
@@ -261,7 +259,7 @@
                        (concat results founds)))))))
 
 (defn poor-man-rss-html [url]
-  (let [content (rss.html/get-hickory-web-page url)
+  (let [content (rss.html/get-hickory-web-page url {"User-Agent" "super-rss poor-man-rss"})
         root-url (common/get-root-url url)
         all-links (->> (find-all-links root-url content)
                        (remove #(= url %)))]

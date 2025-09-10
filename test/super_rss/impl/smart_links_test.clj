@@ -6,10 +6,10 @@
             [super-rss.impl.flat-smart-links :as flat-sut]
             [super-rss.html :as rss.html]))
 
-(defn load-html [file-path]
+(defn- load-html [file-path]
   (slurp (io/resource file-path)))
 
-(defn html->content-tree [body url]
+(defn- html->content-tree [body url]
   (#'rss.html/body->content-tree body url))
 
 (def sample1 (load-html "smart_links/sample1.html"))
@@ -80,7 +80,7 @@
 
 (deftest poor-man-rss-html-test
   (testing "urls are prefixed by blog"
-    (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample1 "http://company.com/blog"))]
+    (with-redefs [rss.html/get-hickory-web-page (fn [_ _] (html->content-tree sample1 "http://company.com/blog"))]
 
       (is (= (->> [{:link "http://company.com/a-simple-tool-for-load-testing-stateful-systems-using-clojure/",
                     :title "A simple tool for load testing stateful systems using Clojure",
@@ -147,7 +147,7 @@
              (->> (sut/poor-man-rss-html "http://company.com/blog")
                   (sort-by :link))))))
   (testing "handle url without '/'"
-    (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample2 "http://company.com/"))]
+    (with-redefs [rss.html/get-hickory-web-page (fn [_ _] (html->content-tree sample2 "http://company.com/"))]
       (let [expected (->> [{:link "http://company.com/2023-11-21-me-war-becomes-obsolete-once-lenr-allowed.html",
                             :title
                             "War in the Middle East will become OBSOLETE once Low Energy Nuclear Reactions are allowed to flourish, providing low-cost energy to the world",
@@ -180,7 +180,7 @@
                         (take 6))]
         (is (= expected (sort-by :link actual))))))
   (testing "handle url without the suffix of the root-url being similar to the prefix of the link"
-    (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample3 "http://company.com/news"))]
+    (with-redefs [rss.html/get-hickory-web-page (fn [_ _] (html->content-tree sample3 "http://company.com/news"))]
       (let [results (sort-by :link (sut/poor-man-rss-html "http://company.com/news"))]
         (is (= [{:link "http://company.com/news/autofill-technologies-pre-series-a-funding",
                  :title
@@ -223,7 +223,7 @@
                (take-last 3 results))
             "All the results are prefix by 'news'"))))
   (testing "filter out pagination links like ?page=1"
-    (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample4 "https://www.usertesting.com/blog"))]
+    (with-redefs [rss.html/get-hickory-web-page (fn [_ _] (html->content-tree sample4 "https://www.usertesting.com/blog"))]
       (let [results (sut/poor-man-rss-html "https://www.usertesting.com/blog")]
         ;; Verify that no pagination links are included in the results
         (is (not-any? #(re-find #"\?page=" (:link %)) results)
@@ -248,7 +248,7 @@
 
 (deftest flat-poor-man-rss-html-test
   (testing "extract articles from beehiiv-style isolated containers using URL-to-title extraction"
-    (with-redefs [rss.html/get-hickory-web-page (fn [_] (html->content-tree sample5 "https://builders-newsletter.beehiiv.com/"))]
+    (with-redefs [rss.html/get-hickory-web-page (fn [_ _] (html->content-tree sample5 "https://builders-newsletter.beehiiv.com/"))]
       (let [results (flat-sut/flat-poor-man-rss-html "https://builders-newsletter.beehiiv.com/")]
         (is (pos? (count results))
             "Should return some article links")

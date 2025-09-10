@@ -18,7 +18,7 @@
     (step coll #{})))
 
 (defn flat-poor-man-rss-html [url]
-  (let [content (rss.html/get-hickory-web-page url)
+  (let [content (rss.html/get-hickory-web-page url {"User-Agent" "super-rss poor-man-rss"})
         root-url (common/get-root-url url)
         all-links (->> (smart-links/find-all-links root-url content)
                        (remove #(= url %))

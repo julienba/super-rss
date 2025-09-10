@@ -1,18 +1,16 @@
 (ns super-rss.html
   (:require [clojure.core.cache :as cache]
             [clojure.string :as string]
-            [clj-http.client :as http]
+            [babashka.http-client :as http]
             [net.cgrand.enlive-html :as html]
             [super-rss.date :as date]
             [super-rss.hickory-zipper :as hickory-zipper]))
 
-(def headers {"User-Agent" "super-rss"})
-
 (defn fetch
   "Fetch an url and return and enlive version of the body"
-  [url]
-  (when-let [html (:body (http/get url))]
-    (let [data (html/html-snippet html {:headers headers})]
+  [url headers]
+  (when-let [html (:body (http/get url {:headers headers}))]
+    (let [data (html/html-snippet html)]
       data)))
 
 (defn- body->content-tree [body root-url]
@@ -20,8 +18,8 @@
 
 (defn fetch-hickory
   "Fetch an url and return and enlive version of the body"
-  [url]
-  (when-let [body (:body (http/get url {:headers headers}))]
+  [url http-headers]
+  (when-let [body (:body (http/get url {:headers http-headers}))]
     (body->content-tree body url)))
 
 ; ~ Cache ======================================================================
@@ -45,14 +43,14 @@
   "Fetch a url and cache the result.
    Use caching to limit the amount of external reading.
    Deprecated in favor of the hickory version"
-  [url]
-  (get-web-page* url url fetch))
+  [url http-headers]
+  (get-web-page* url url #(fetch % http-headers)))
 
 (defn get-hickory-web-page
   "Fetch a url and cache the result.
    Use caching to limit the amount of external reading."
-  [url]
-  (get-web-page* (str "hickory-" url) url fetch-hickory))
+  [url http-headers]
+  (get-web-page* (str "hickory-" url) url #(fetch-hickory % http-headers)))
 
 ; ~ Parsing ====================================================================
 
@@ -80,16 +78,16 @@
        (some #(when (date/str->date %) (date/str->date %)))))
 
 (defn extract-simple-html-meta
-  "Return the title and desription of a webpage"
+  "Return the title and description of a webpage"
   [url]
-  (let [data (get-web-page url)]
+  (let [data (get-web-page url {"User-Agent" "super-rss title+description-finder"})]
     {:title       (get-page-title data)
      :description (get-page-description data)}))
 
 (defn extract-html-meta
   "Return the minimal expected element for a RSS feed: title, description, published-date, link"
   [url]
-  (let [data        (get-web-page url)
+  (let [data        (get-web-page url {"User-Agent" "super-rss build-rss-from-html"})
         date        (get-page-date data)]
     (merge (extract-simple-html-meta url)
            {:published-date (when date (date/local-date->date date))

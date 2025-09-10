@@ -1,5 +1,5 @@
 (ns super-rss.impl.sitemap
-  (:require [clj-http.client :as http]
+  (:require [babashka.http-client :as http]
             clojure.instant
             [clojure.tools.logging :as log]
             [clojure.string :as string]
@@ -22,7 +22,7 @@
 (defn- find-sitemap-url-in-html
   "Look if the sitemap is specify in the html head"
   [base-url]
-  (let [content (rss.html/get-web-page (str base-url "/"))]
+  (let [content (rss.html/get-web-page (str base-url "/") {"User-Agent" "super-rss sitemap-finder"})]
     (when-let [url (->> (html/select content [:head :link])
                         (filter (fn [{:keys [attrs]}] (= "sitemap" (:rel attrs))))
                         first
@@ -67,7 +67,7 @@
                [%])
             sitemap-contents)))
 
-(def page-crawl-limit 20)
+(def page-crawl-limit 10)
 
 (defn poor-man-rss
   "Try to create an RSS feed using the sitemap.
