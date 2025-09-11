@@ -19,7 +19,7 @@
 
 (defn fetch-rss
   "Fetch feed, works with all RSS format"
-  [url timeout]
+  [url {:keys [timeout throw?]}]
   (try
     (let [{:keys [feed]} (remus/parse-url url {:insecure? true
                                                :connection-timeout timeout
@@ -29,6 +29,11 @@
        :entries     (:entries feed)})
     (catch clojure.lang.ExceptionInfo e
       (let [response (ex-data e)]
-        (log/errorf "Fail to fetch url %s %s" url response)))
+        (log/errorf "Fail to fetch url %s %s" url response)
+        (when throw?
+          (throw e))))
     (catch Exception e
-      (log/errorf e "Fail to fetch url %s" url))))
+      (log/errorf "Fail to fetch url %s : %s" url (ex-message e))
+      (when throw?
+        (throw e)))))
+

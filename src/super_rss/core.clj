@@ -14,17 +14,17 @@
   "Different implementation for creating an RSS feed"
   (fn [method _url _opts] method))
 
-(defmethod fetch :direct-rss [_ url {:keys [timeout]}]
-  (when-let [result (impl.normal/fetch-rss url timeout)]
+(defmethod fetch :direct-rss [_ url {:keys [timeout throw?]}]
+  (when-let [result (impl.normal/fetch-rss url {:throw? throw? :timeout timeout})]
     {:title (:title result)
      :description (:description result)
      :data (:entries result)
      :params {:method :direct-rss
               :url url}}))
 
-(defmethod fetch :find-rss-url [_ url {:keys [timeout]}]
+(defmethod fetch :find-rss-url [_ url {:keys [timeout throw?]}]
   (when-let [feed-url (impl.normal/find-feed-url url)]
-    (when-let [result (impl.normal/fetch-rss feed-url timeout)]
+    (when-let [result (impl.normal/fetch-rss feed-url {:throw? throw? :timeout timeout})]
       {:title (:title result)
        :description (:description result)
        :data (:entries result)
@@ -57,8 +57,10 @@
    `method-options:` list of strategy
    Return a map of `:data` with the RSS feed and `:method` with the method used to retrieve the feed."
   [url
-   {:keys [timeout method method-options]
-    :or {timeout 10000 method-options [:find-rss-url :sitemap :smart-links :flat-smart-links]}}
+   {:keys [method method-options throw? timeout]
+    :or {method-options [:find-rss-url :sitemap :smart-links :flat-smart-links]
+         throw? false
+         timeout 10000}}
    {:keys [_already-ingest?] :as handler-fns}]
   (letfn [(build-result [result]
             {:params (:params result)
@@ -66,7 +68,9 @@
              :description (:description result)
              :results (:data result)})
           (try-method [method]
-            (when-let [result (fetch method url {:timeout timeout :handlers handler-fns})]
+            (when-let [result (fetch method url {:handlers handler-fns
+                                                 :throw? throw?
+                                                 :timeout timeout})]
               (when-not (empty? (:data result))
                 (log/infof "Fetch %s using method %s" url method)
                 (build-result result))))]
