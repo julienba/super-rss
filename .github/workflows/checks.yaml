@@ -18,9 +18,9 @@ jobs:
           key-label: 'lint'
       - uses: jdx/mise-action@v3.2.0
         with:
-          install_args: "clj-kondo@2025.06.05 java@temurin-21.0.2+13.0.LTS clojure@1.12.1.1550"
+          install_args: "babashka@1.12.206 clj-kondo@2025.06.05 java@temurin-21.0.2+13.0.LTS clojure@1.12.1.1550"
       - name: Lint
-        run: clj-kondo --lint deps.edn src test
+        run: bb deps && bb lint-init && bb lint
 
   outdated:
     runs-on: ubuntu-latest
@@ -31,9 +31,9 @@ jobs:
           key-label: 'outdated'
       - uses: jdx/mise-action@v3.2.0
         with:
-          install_args: "java clojure"
+          install_args: "babashka java clojure"
       - name: Outdated deps
-        run: clojure -M:outdated
+        run: bb deps && bb outdated-check
 
   tests:
     runs-on: ubuntu-latest
@@ -44,6 +44,6 @@ jobs:
           key-label: 'tests'
       - uses: jdx/mise-action@v3.2.0
         with:
-          install_args: "java clojure"
+          install_args: "babashka java clojure"
       - name: Run tests
-        run: clojure -M:test:runner
+        run: bb deps && bb test
