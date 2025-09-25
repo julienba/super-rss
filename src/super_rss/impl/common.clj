@@ -33,7 +33,7 @@
     (str protocol "://" host "/")))
 
 (def ^:deprecated article-prefix
-  #"(?i)#|^/blog/|^blog/|^/news/|^news/|^/articles/|^articles/")
+  #"(?i)#|^/blog/|^blog/|^/news/|^news/|^/articles/|^articles/|^insights/")
 
 (defn cleanup-urls
   "Cleanup urls that are not intresting and not from the same domain.

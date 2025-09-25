@@ -5,6 +5,7 @@
             [clojure.string :as string]
             [clojure.xml :as xml]
             [net.cgrand.enlive-html :as html]
+            [super-rss.robots-txt :as robots-txt]
             [super-rss.html :as rss.html]
             [super-rss.impl.common :as common]
             [super-rss.util :as util]))
@@ -12,12 +13,11 @@
 (defn- find-sitemap-url-in-robots
   "Look in the robots.txt if there is a sitemap defined"
   [base-url]
-  (let [{:keys [status body]} (http/get (str base-url "/robots.txt") {:throw-exceptions false})]
-    (when (= 200 status)
-      (when-let [sitemap-line (->> (string/split-lines body)
-                                   (filter #(string/starts-with? % "Sitemap:"))
-                                   (first))]
-        (last (string/split sitemap-line #" "))))))
+  (when-let [robots-vec (robots-txt/get-robots-txt base-url)]
+    (let [urls (map :value (filter #(= "Sitemap" (:key %)) robots-vec))]
+      (when (< 1 (count urls))
+        (log/infof "Multiple sitemaps found %s" (pr-str urls)))
+      (first urls))))
 
 (defn- find-sitemap-url-in-html
   "Look if the sitemap is specify in the html head"
@@ -50,7 +50,7 @@
                            :let [url     (->> content (filter #(= :loc (:tag %))) first :content first)
                                  lastmod (->> content (filter #(= :lastmod (:tag %))) first :content first)]]
                        {:url url
-                        ; Sometimes the date is accurate
+                        ; Sometimes the date is accurate, sometimes no
                         :lastmod (when lastmod
                                    (try
                                      (clojure.instant/read-instant-date lastmod)
