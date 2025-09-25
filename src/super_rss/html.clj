@@ -39,10 +39,9 @@
       (swap! C #(cache/miss % cache-key (run-fn url))))
     cache-key))
 
-(defn ^:deprecated get-web-page
+(defn get-web-page
   "Fetch a url and cache the result.
-   Use caching to limit the amount of external reading.
-   Deprecated in favor of the hickory version"
+   Use caching to limit the amount of external reading."
   [url http-headers]
   (get-web-page* url url #(fetch % http-headers)))
 

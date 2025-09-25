@@ -41,7 +41,6 @@
    :params {:method :flat-smart-links
             :url url}})
 
-
 (defmethod fetch :sitemap [_ url opts]
   (let [result (impl.sitemap/poor-man-rss url opts)]
     {:data (:data result)

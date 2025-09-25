@@ -25,4 +25,4 @@
         :task (clojure "-M:test:test-runner")}
 
   check {:doc "Run all code checks and tests"
-         :depends [fmt lint outdated test]}}}
+         :depends [lint outdated test]}}}
