@@ -26,9 +26,9 @@
 
 (defn find-feed-url
   [website-url]
-  (let [content (rss.html/get-web-page website-url {"User-Agent" "super-rss rss-reader"})
-        feed-url (find-feed-url' content)]
-    (feed-url->absolute-feed-url website-url feed-url)))
+  (let [content (rss.html/get-web-page website-url {"User-Agent" "super-rss rss-reader"})]
+    (when-let [feed-url (find-feed-url' content)]
+      (feed-url->absolute-feed-url website-url feed-url))))
 
 (defn fetch-rss
   "Fetch feed, works with all RSS format"
