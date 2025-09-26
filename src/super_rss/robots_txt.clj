@@ -7,7 +7,7 @@
     [{:key \"Sitemap\", :value \"https://yolo.cc/sitemap/sitemap.xml\"}
      {:key \"License\", :value \"https://medium.com/license.xml\"}])"
   [base-url]
-  (let [{:keys [status body]} (http/get (str base-url "/robots.txt") {:throw-exceptions false})]
+  (let [{:keys [status body]} (http/get (str base-url "/robots.txt") {:throw false})]
     (when (= 200 status)
       (->> (string/split-lines body)
            (map (fn [line]

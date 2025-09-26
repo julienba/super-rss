@@ -35,7 +35,7 @@
   (or (find-sitemap-url-in-robots base-url)
       (find-sitemap-url-in-html base-url)
       ; Give a try to a classic sitemap URL
-      (let [{:keys [status]} (http/get (str base-url "/sitemap.xml") {:throw-exceptions false})]
+      (let [{:keys [status]} (http/get (str base-url "/sitemap.xml") {:throw false})]
         (when (= 200 status)
           (str base-url "/sitemap.xml")))))
 
