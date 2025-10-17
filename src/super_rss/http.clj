@@ -77,29 +77,3 @@
   ([url opts]
    (let [opts (assoc opts :url url :method :put)]
      (request opts))))
-
-;; creates a new client instance
-;; (def c (c/client {}))
-
-;; (time (c/request c {:method :get
-;;                     :url "https://www.wimhofmethod.com/blog/lichen-planopilaris"}))
-
-;; (require '[exoscale.ok-http.client :as client]
-;;          '[exoscale.ok-http.request :as request])
-
-;; (def cached-client (create-cached-client {}))
-
-;; (type cached-client)
-
-;; (time (client/request @default-client
-;;                       {:method :get
-;;                        :url "https://www.wimhofmethod.com/blog/how-to-supercharge-your-deep-sleep"}))
-
-;; (client/request @default-client {:url "https://www.wimhofmethod.com/blog/how-to-supercharge-your-deep-sleep", :method :get})
-
-
-;(time (get "https://www.wimhofmethod.com/blog/how-to-supercharge-your-deep-sleep" {:response-body-decoder :string}))
-
-
-;; TODO check for the throw option.
-;; With this library it is :throw-on-error
