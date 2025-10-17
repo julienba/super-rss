@@ -28,7 +28,8 @@
   (delay (create-cached-client {})))
 
 (def default-opts
-  {:response-body-decoder :string})
+  {:response-body-decoder :string
+   :throw-on-error false})
 
 (defn- request [{:keys [client] :as req}]
   (let [client (or client @default-client)
