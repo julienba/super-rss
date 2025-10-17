@@ -43,7 +43,7 @@
   (xml/parse (java.io.ByteArrayInputStream. (.getBytes s))))
 
 (defn- fetch-sitemap [url]
-  (let [{:keys [status body]} (http/get url)]
+  (let [{:keys [status body]} (http/get url {:throw false})]
     (when (= 200 status)
       (let [content-list (:content (parse-xml-string body))
             url-list (for [{:keys [content]} content-list
