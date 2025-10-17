@@ -1,5 +1,5 @@
 (ns super-rss.html-test
-  (:require [clojure.test :refer [deftest is are]]
+  (:require [clojure.test :refer [deftest are]]
             [super-rss.html :as sut]))
 
 (deftest clean-title-test
