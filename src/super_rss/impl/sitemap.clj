@@ -47,7 +47,7 @@
     (when (= 200 status)
       (let [content-list (:content (parse-xml-string body))
             url-list (for [{:keys [content]} content-list
-                           :let [url     (->> content (filter #(= :loc (:tag %))) first :content first)
+                           :let [url (->> content (filter #(= :loc (:tag %))) first :content first)
                                  lastmod (->> content (filter #(= :lastmod (:tag %))) first :content first)]]
                        {:url url
                         ; Sometimes the date is accurate, sometimes no
@@ -67,7 +67,55 @@
                [%])
             sitemap-contents)))
 
-(def page-crawl-limit 10)
+(def page-crawl-limit 3)
+
+(defn- url->title
+  "Extract a title from a URL path"
+  [url]
+  (when url
+    (try
+      (let [url-str (string/trim url)
+            ;; Remove protocol and domain
+            path (-> url-str
+                     (string/replace #"^https?://[^/]+" "")
+                     (string/replace #"[?#].*$" "")) ; Remove query params and fragments
+            ;; Get the last meaningful path segment
+            segments (-> path
+                         (string/replace #"/$" "") ; Remove trailing slash
+                         (string/split #"/"))
+            last-segment (or (last (remove string/blank? segments)) "")
+            ;; Clean up the segment
+            cleaned (-> last-segment
+                        (string/replace #"\.html?$" "") ; Remove .html or .htm
+                        (string/replace #"\.[a-z]+$" "") ; Remove other extensions
+                        (string/replace #"[-_]" " ") ; Replace separators with spaces
+                        string/trim)]
+        (when (seq cleaned)
+          ;; Capitalize each word
+          (->> (string/split cleaned #"\s+")
+               (map string/capitalize)
+               (string/join " "))))
+      (catch Exception _
+        nil))))
+
+(defn- cleanup-titles
+  "When all titles are the same use the URL to 'infer' the title.
+   By infer I mean than an URL like https://www.ohpen.com/latest-insights/article/ohpen-and-ortec-finance-join-forces-to-bring-innovation-to-pensions
+   should become 'Ohpen and ortec finance join forces to bring innovation to pensions"
+  [sitemap-data]
+  (when (seq sitemap-data)
+    (let [titles (map :title sitemap-data)
+          all-same? (or (every? nil? titles)
+                        (every? string/blank? titles)
+                        (and (seq titles)
+                             (apply = (remove nil? titles))))]
+      (if all-same?
+        (map (fn [item]
+               (if-let [url-title (url->title (:link item))]
+                 (assoc item :title url-title)
+                 item))
+             sitemap-data)
+        sitemap-data))))
 
 (defn poor-man-rss
   "Try to create an RSS feed using the sitemap.
@@ -113,7 +161,10 @@
                                     (catch Exception e
                                       ; Sitemap can contains non-working page (404, redirect loop, etc)
                                       (log/infof e "Fail to parse URL %s" url)))))
-                        (remove nil?)))))]
+                        (remove nil?)
+                        (cleanup-titles)))))]
     {:data data
      :url sitemap-url}))
+
+;(poor-man-rss "https://www.ohpen.com/sitemap.xml" {})
 

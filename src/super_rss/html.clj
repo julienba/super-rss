@@ -24,6 +24,14 @@
 
 ; ~ Parsing ====================================================================
 
+(defn- clean-title
+  "Remove common noise present in HTML page"
+  [title]
+  (when (string? title)
+    (let [[cleaned] (string/split title #"\s*\|\s*" 2)]
+      (when cleaned
+        (string/trim cleaned)))))
+
 (defn get-page-title [content]
   (->> (html/select content [:title])
        first
@@ -51,8 +59,8 @@
   "Return the title and description of a webpage"
   [url]
   (let [data (fetch url {"User-Agent" "super-rss title+description-finder"})]
-    {:title       (get-page-title data)
-     :description (get-page-description data)}))
+    {:title       (some-> (get-page-title data) string/trim clean-title)
+     :description (some-> (get-page-description data) string/trim)}))
 
 (defn extract-html-meta
   "Return the minimal expected element for a RSS feed: title, description, published-date, link"
