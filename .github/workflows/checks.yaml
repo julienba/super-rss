@@ -16,7 +16,7 @@ jobs:
       - uses: ./.github/actions/cache-clojure-deps
         with:
           key-label: 'lint'
-      - uses: jdx/mise-action@v3.2.0
+      - uses: jdx/mise-action@v3.3.1
         with:
           install_args: "babashka@1.12.206 clj-kondo@2025.06.05 java@temurin-21.0.2+13.0.LTS clojure@1.12.1.1550"
       - name: Lint
@@ -29,7 +29,7 @@ jobs:
       - uses: ./.github/actions/cache-clojure-deps
         with:
           key-label: 'outdated'
-      - uses: jdx/mise-action@v3.2.0
+      - uses: jdx/mise-action@v3.3.1
         with:
           install_args: "babashka java clojure"
       - name: Outdated deps
@@ -42,7 +42,7 @@ jobs:
       - uses: ./.github/actions/cache-clojure-deps
         with:
           key-label: 'tests'
-      - uses: jdx/mise-action@v3.2.0
+      - uses: jdx/mise-action@v3.3.1
         with:
           install_args: "babashka java clojure"
       - name: Run tests
