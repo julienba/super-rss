@@ -259,7 +259,7 @@
                        (concat results founds)))))))
 
 (defn poor-man-rss-html [url]
-  (let [content (rss.html/get-hickory-web-page url {"User-Agent" "super-rss poor-man-rss"})
+  (let [content (rss.html/fetch-hickory url {"User-Agent" "super-rss poor-man-rss"})
         root-url (common/get-root-url url)
         all-links (->> (find-all-links root-url content)
                        (remove #(= url %)))]

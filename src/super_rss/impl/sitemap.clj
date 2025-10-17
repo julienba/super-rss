@@ -1,12 +1,12 @@
 (ns super-rss.impl.sitemap
-  (:require [babashka.http-client :as http]
-            clojure.instant
+  (:require clojure.instant
             [clojure.tools.logging :as log]
             [clojure.string :as string]
             [clojure.xml :as xml]
             [net.cgrand.enlive-html :as html]
             [super-rss.robots-txt :as robots-txt]
             [super-rss.html :as rss.html]
+            [super-rss.http :as http]
             [super-rss.impl.common :as common]
             [super-rss.util :as util]))
 
@@ -22,7 +22,7 @@
 (defn- find-sitemap-url-in-html
   "Look if the sitemap is specify in the html head"
   [base-url]
-  (let [content (rss.html/get-web-page (str base-url "/") {"User-Agent" "super-rss sitemap-finder"})]
+  (let [content (rss.html/fetch (str base-url "/") {"User-Agent" "super-rss sitemap-finder"})]
     (when-let [url (->> (html/select content [:head :link])
                         (filter (fn [{:keys [attrs]}] (= "sitemap" (:rel attrs))))
                         first
@@ -35,7 +35,7 @@
   (or (find-sitemap-url-in-robots base-url)
       (find-sitemap-url-in-html base-url)
       ; Give a try to a classic sitemap URL
-      (let [{:keys [status]} (http/get (str base-url "/sitemap.xml") {:throw false})]
+      (let [{:keys [status]} (http/get (str base-url "/sitemap.xml") {:throw-on-error false})]
         (when (= 200 status)
           (str base-url "/sitemap.xml")))))
 
@@ -116,3 +116,4 @@
                         (remove nil?)))))]
     {:data data
      :url sitemap-url}))
+
