@@ -11,8 +11,7 @@
     (str prefix host)))
 
 (defn url->absolute-url [root-url url]
-  (if (or (string/starts-with? url "javascript:")
-          (string/starts-with? url "mailto:"))
+  (if (re-matches #"^(javascript:|mailto:|tel:).*" url)
     url
     (let [root-url (URL. root-url)
           url (URL. root-url url)]
