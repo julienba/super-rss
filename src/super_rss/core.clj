@@ -1,14 +1,10 @@
 (ns super-rss.core
   (:require clojure.instant
             [clojure.tools.logging :as log]
-            [super-rss.html :as html]
             [super-rss.impl.flat-smart-links :as impl.flat-smart-links]
             [super-rss.impl.normal :as impl.normal]
             [super-rss.impl.sitemap :as impl.sitemap]
             [super-rss.impl.smart-links :as impl.smart-links]))
-
-(defn reset-cache! []
-  (html/reset-cache!))
 
 (defmulti fetch
   "Different implementation for creating an RSS feed"

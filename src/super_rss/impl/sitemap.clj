@@ -22,7 +22,7 @@
 (defn- find-sitemap-url-in-html
   "Look if the sitemap is specify in the html head"
   [base-url]
-  (let [content (rss.html/get-web-page (str base-url "/") {"User-Agent" "super-rss sitemap-finder"})]
+  (let [content (rss.html/fetch (str base-url "/") {"User-Agent" "super-rss sitemap-finder"})]
     (when-let [url (->> (html/select content [:head :link])
                         (filter (fn [{:keys [attrs]}] (= "sitemap" (:rel attrs))))
                         first
@@ -116,3 +116,4 @@
                         (remove nil?)))))]
     {:data data
      :url sitemap-url}))
+

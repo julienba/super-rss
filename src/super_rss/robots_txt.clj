@@ -19,5 +19,5 @@
                                robots-line))
           robots-vec))
 
-;; (def X (get-robots-txt "https://uxdesign.cc/"))
-;; (medium? X)
+;; (def resp (get-robots-txt "https://uxdesign.cc/"))
+;; (medium? resp)
