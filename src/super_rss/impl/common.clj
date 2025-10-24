@@ -9,7 +9,8 @@
                              "/blog/"
                              "/content/"
                              "/news/"
-                             "/article/"})
+                             "/article/"
+                             "/library/"})
 
 (defn ^:deprecated blog-url?
   "Attempt to detect URL that look like a blog post with content (ie. no category, no wrongly name page that ends in the sitemap by mistake)"
@@ -33,11 +34,11 @@
     (str protocol "://" host "/")))
 
 (def ^:deprecated article-prefix
-  #"(?i)#|^/blog/|^blog/|^/news/|^news/|^/articles/|^articles/|^insights/")
+  #"(?i)#|^/blog/|^blog/|^/news/|^news/|^/articles/|^articles/|^/insights|^insights|^/library/|^library/")
 
 (defn cleanup-urls
   "Cleanup urls that are not intresting and not from the same domain.
-   urls are expected to be absolutes"
+   URLs are expected to be absolutes"
   [root-url urls]
   (let [filter-urls (->> urls
                          (remove string/blank?)

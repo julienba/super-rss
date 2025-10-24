@@ -1,4 +1,7 @@
 (ns super-rss.impl.sitemap
+  "Best effort to transform a sitemap into an RSS feed.
+   This idea is to continiously improve it by adding more and more heuristics,
+   as the specification (https://www.sitemaps.org/protocol.html) is not always followed and the matching by prefix is lackluster."
   (:require clojure.instant
             [clojure.tools.logging :as log]
             [clojure.string :as string]
@@ -10,14 +13,20 @@
             [super-rss.impl.common :as common]
             [super-rss.util :as util]))
 
+(defn- find-sitemap-url-in-robots-contents [base-url robots-vec]
+  (let [urls (map :value (filter #(re-find #"Sitemap|sitemap" (:key %)) robots-vec))
+        _ (when (< 1 (count urls))
+            (log/infof "Multiple sitemaps found %s" (pr-str urls)))
+        best-url (first (filter #(re-find common/article-prefix (string/replace-first % base-url "")) urls))]
+    (if best-url
+      best-url
+      (first urls))))
+
 (defn- find-sitemap-url-in-robots
   "Look in the robots.txt if there is a sitemap defined"
   [base-url]
   (when-let [robots-vec (robots-txt/get-robots-txt base-url)]
-    (let [urls (map :value (filter #(= "Sitemap" (:key %)) robots-vec))]
-      (when (< 1 (count urls))
-        (log/infof "Multiple sitemaps found %s" (pr-str urls)))
-      (first urls))))
+    (find-sitemap-url-in-robots-contents base-url robots-vec)))
 
 (defn- find-sitemap-url-in-html
   "Look if the sitemap is specify in the html head"
@@ -123,22 +132,25 @@
    - page has to match common/blog-url?
    - read only the first pages (arbitrary limit to avoid crawling too much of a website)"
   [url {:keys [handlers]}]
-  (let [sitemap-url (if (string/ends-with? url ".xml")
+  (let [base-url (util/get-base-url url)
+        sitemap-url (if (string/ends-with? url ".xml")
                       url
-                      (find-sitemap-url (util/get-base-url url)))
+                      (find-sitemap-url base-url))
         data (cond
                (nil? sitemap-url)
                (log/debug "Cannot find sitemap for %s" url)
 
-               (not (string/ends-with? sitemap-url ".xml"))
-               (log/infof "Sitemap type not supported %s" sitemap-url)
+               ; TODO if it's a folder it might crash but let's implement it the next time
+               ;; I encounter it or dig the protocol https://www.sitemaps.org/protocol.html
+               ;;  (not (string/ends-with? sitemap-url ".xml"))
+               ;;  (log/infof "Sitemap type not supported %s" sitemap-url)
 
                :else
 
                (when-let [sitemap-contents (sitemap-url->sitemap-contents sitemap-url)]
                  (let [sitemap-contents-filter (->> sitemap-contents
                                                     (remove #(nil? (:url %)))
-                                                    (filter #(re-find common/article-prefix (:url %))))
+                                                    (filter #(re-find common/article-prefix (string/replace-first (:url %) base-url ""))))
                        urls-prefixed? (< 2 (count sitemap-contents-filter))
                        clean-sitemap-contents (if urls-prefixed?
                                                 sitemap-contents-filter
@@ -166,5 +178,8 @@
     {:data data
      :url sitemap-url}))
 
-;(poor-man-rss "https://www.ohpen.com/sitemap.xml" {})
+;; Good regresion test:
+;; - "https://design.google": return a 308 and articles are prefix by the unusual '/library'
+;; - https://rasa.com robots.txt use sitemap instead of Sitemap and there are multiple sitemap
+
 

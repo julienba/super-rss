@@ -141,3 +141,40 @@
       (is (= "Ohpen And Ortec Finance Join Forces To Bring Innovation To Pensions" (:title (first result))))
       (is (= "Aegon Chooses Ohpen Platform To Modernise Savings And Investment Administration" (:title (second result))))
       (is (= "Fintech Company Ohpen Enters Pension Market Through Partnership With Tkp" (:title (nth result 2)))))))
+
+(deftest test-find-sitemap-url-in-robots
+  (testing "Single sitemap in robots.txt with Sitemap key"
+    (is (= "https://example.com/sitemap.xml"
+           (#'sut/find-sitemap-url-in-robots-contents "https://example.com"
+                                                      [{:key "User-agent" :value "*"}
+                                                       {:key "Sitemap" :value "https://example.com/sitemap.xml"}]))))
+
+  (testing "Single sitemap in robots.txt with lowercase sitemap key"
+    (is (= "https://example.com/sitemap.xml"
+           (#'sut/find-sitemap-url-in-robots-contents "https://example.com"
+                                                      [{:key "User-agent" :value "*"}
+                                                       {:key "sitemap" :value "https://example.com/sitemap.xml"}]))))
+
+  (testing "Multiple sitemaps - returns first when no article prefix match"
+    (is (= "https://example.com/sitemap.xml"
+           (#'sut/find-sitemap-url-in-robots-contents "https://example.com"
+                                                      [{:key "User-agent" :value "*"}
+                                                       {:key "sitemap" :value "https://example.com/sitemap.xml"}
+                                                       {:key "sitemap" :value "https://example.com/other-sitemap.xml"}
+                                                       {:key "sitemap" :value "https://example.com/third-sitemap.xml"}]))))
+
+  (testing "Multiple sitemaps with article prefix match - real world rasa.com case"
+    (is "https://rasa.com/blog/sitemap.xml"
+        (#'sut/find-sitemap-url-in-robots-contents "https://rasa.com"
+                                                   [{:key "User-agent" :value "*"}
+                                                    {:key "sitemap" :value "https://rasa.com/sitemap.xml"}
+                                                    {:key "sitemap" :value "https://rasa.com/blog/sitemap.xml"}
+                                                    {:key "sitemap" :value "https://rasa.com/summit/sitemap.xml"}
+                                                    {:key "sitemap" :value "https://rasa.com/docs/rasa/sitemap.xml"}
+                                                    {:key "sitemap" :value "https://rasa.com/docs/rasa-x/sitemap.xml"}
+                                                    {:key "sitemap" :value "https://rasa.community/sitemap.xml"}])))
+
+  (testing "No sitemap in robots.txt - returns empty sequence or nil"
+    (is (nil? (#'sut/find-sitemap-url-in-robots-contents "https://example.com"
+                                                         [{:key "User-agent" :value "*"}
+                                                          {:key "Disallow" :value "/admin/"}])))))
