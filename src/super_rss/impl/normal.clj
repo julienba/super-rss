@@ -9,7 +9,7 @@
 (defn- feed-url->absolute-feed-url [website-url feed-url]
   (util/url->absolute-url (util/get-base-url website-url) feed-url))
 
-(defn- find-feed-url' [content]
+(defn- find-feed-url' [website-url content]
   (if-let [correct-feed-url (->> (html/select content [:link])
                                  (filter #(get #{"application/atom+xml" "application/rss+xml" "text/xml"}
                                                (get-in % [:attrs :type])))
@@ -17,9 +17,11 @@
                                  :attrs :href)]
     correct-feed-url
     (when-let [link-feed-url (->> (html/select content [:a])
-                                  (filter (fn [node] (and (re-find #"RSS" (apply str (:content node)))
-                                                          (get-in node [:attrs :href])
-                                                          (string/starts-with? (get-in node [:attrs :href]) "/"))))
+                                  (filter (fn [node]
+                                            (and (re-find #"RSS" (apply str (:content node)))
+                                                 (get-in node [:attrs :href])
+                                                 (or (string/starts-with? (get-in node [:attrs :href]) "/")
+                                                     (string/starts-with? (get-in node [:attrs :href]) (util/get-base-url website-url))))))
                                   first
                                   :attrs :href)]
       link-feed-url)))
@@ -27,7 +29,7 @@
 (defn find-feed-url
   [website-url]
   (let [content (rss.html/fetch website-url {"User-Agent" "super-rss rss-reader"})]
-    (when-let [feed-url (find-feed-url' content)]
+    (when-let [feed-url (find-feed-url' website-url content)]
       (feed-url->absolute-feed-url website-url feed-url))))
 
 (defn fetch-rss
