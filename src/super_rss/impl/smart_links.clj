@@ -166,7 +166,7 @@
                            (sort comp-content-length)
                            last))
         link (-> main-anchor :attrs :href)
-        content-title (-> main-anchor html/text)
+        content-title (-> main-anchor rss.html/text)
         anchor-title (find-title-in-anchor main-anchor)
         nearby-title (find-title-near-anchor main-anchor)
         extra-content (search-for-extra-content post-node)

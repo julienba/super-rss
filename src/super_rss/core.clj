@@ -72,4 +72,3 @@
     (if method
       (try-method method)
       (some try-method method-options))))
-

@@ -2,6 +2,7 @@
   (:require [clojure.string :as string]
             [super-rss.http :as http]
             [net.cgrand.enlive-html :as html]
+            [net.cgrand.xml :as xml]
             [super-rss.date :as date]
             [super-rss.hickory-zipper :as hickory-zipper]))
 
@@ -70,3 +71,13 @@
     (merge (extract-simple-html-meta url)
            {:published-date (when date (date/local-date->date date))
             :link url})))
+
+(defn text
+  "Returns the text value of a node join separated by a whitespace.
+   A variation of net.cgrand.enlive-html/text"
+  {:tag String}
+  [node]
+  (cond
+    (string? node) node
+    (xml/tag? node) (string/join " " (map text (:content node)))
+    :else ""))
