@@ -14,7 +14,7 @@
             [super-rss.util :as util]))
 
 (defn- find-sitemap-url-in-robots-contents [base-url robots-vec]
-  (let [urls (map :value (filter #(re-find #"Sitemap|sitemap" (:key %)) robots-vec))
+  (let [urls (map :value (filter #(re-find #"^Sitemap$|^sitemap$" (:key %)) robots-vec))
         _ (when (< 1 (count urls))
             (log/infof "Multiple sitemaps found %s" (pr-str urls)))
         best-url (first (filter #(re-find common/article-prefix (string/replace-first % base-url "")) urls))]
@@ -181,5 +181,3 @@
 ;; Good regresion test:
 ;; - "https://design.google": return a 308 and articles are prefix by the unusual '/library'
 ;; - https://rasa.com robots.txt use sitemap instead of Sitemap and there are multiple sitemap
-
-

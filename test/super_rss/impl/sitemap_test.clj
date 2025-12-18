@@ -177,4 +177,23 @@
   (testing "No sitemap in robots.txt - returns empty sequence or nil"
     (is (nil? (#'sut/find-sitemap-url-in-robots-contents "https://example.com"
                                                          [{:key "User-agent" :value "*"}
-                                                          {:key "Disallow" :value "/admin/"}])))))
+                                                          {:key "Disallow" :value "/admin/"}]))))
+  (testing "robots.txt can have comment"
+    (is (= "https://dust.tt/sitemap.xml"
+           (#'sut/find-sitemap-url-in-robots-contents "https://dust.tt"
+                                                      [{:key "# *", :value nil}
+                                                       {:key "User-agent", :value "*"}
+                                                       {:key "Allow", :value "/"}
+                                                       {:key "Disallow", :value "/api*"}
+                                                       {:key "Disallow", :value "/w*"}
+                                                       {:key "Disallow", :value "/poke*"}
+                                                       {:key "Disallow", :value "/oauth*"}
+                                                       {:key "Disallow", :value "/sso-enforced"}
+                                                       {:key "Disallow", :value "/no-workspace"}
+                                                       {:key "Disallow", :value "/maintenance"}
+                                                       {:key "Disallow", :value "/login-error"}
+                                                       {:key "# Host", :value nil}
+                                                       {:key "Host", :value "https://dust.tt"}
+                                                       {:key "# Sitemaps", :value nil}
+                                                       {:key "Sitemap", :value "https://dust.tt/sitemap.xml"}])))))
+
