@@ -1,5 +1,6 @@
 (ns super-rss.impl.sitemap-test
-  (:require [clojure.string :as string]
+  (:require [clojure.instant :as instant]
+            [clojure.string :as string]
             [clojure.test :refer [deftest is testing]]
             [super-rss.impl.common :as common]
             [super-rss.impl.sitemap :as sut]))
@@ -215,7 +216,7 @@
     {:url url
      :lastmod (when lastmod
                 (try
-                  (clojure.instant/read-instant-date lastmod)
+                  (instant/read-instant-date lastmod)
                   (catch Exception _)))}))
 
 (defn- has-article-prefix?
