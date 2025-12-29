@@ -20,6 +20,7 @@
                                  #"/articles/\d+"
                                  #"/blog/\d+"
                                  #"/news/\d+"
+                                 #"/insights/\d+"
                                  #"/\d+$"
                                  #"/page-\d+"
                                  #"/p-\d+"
@@ -75,6 +76,7 @@
           (string/replace #"\s*[-–]\s*Blog\s*$" "")
           (string/replace #"\s*[-–]\s*News\s*$" "")
           (string/replace #"\s*[-–]\s*Articles\s*$" "")
+          (string/replace #"\s*[-–]\s*Insights\s*$" "")
           ;; Clean up any remaining extra whitespace
           string/trim
           ;; Don't return empty strings

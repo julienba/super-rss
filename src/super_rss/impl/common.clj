@@ -10,7 +10,8 @@
                              "/content/"
                              "/news/"
                              "/article/"
-                             "/library/"})
+                             "/library/"
+                             "/insights/"})
 
 (defn ^:deprecated blog-url?
   "Attempt to detect URL that look like a blog post with content (ie. no category, no wrongly name page that ends in the sitemap by mistake)"
@@ -24,6 +25,7 @@
        (not (string/includes? url "/tags/"))
        (not (string/ends-with? url "/blog/"))
        (not (string/ends-with? url "/news/"))
+       (not (string/ends-with? url "/insights/"))
        (boolean (seq (re-find #"[a-zA-Z]+" (last (string/split url #"/")))))))
 
 ;; TODO duplicated of super-rss.util but this one does not return the `/`
@@ -45,10 +47,10 @@
                          (remove #(= root-url %))
                          (remove #(= (str root-url "/") %))
                          (filter #(string/starts-with? % root-url))
-                         (remove #(re-find #"(?i)#|/author/|/terms-and-privacy/|/article$|/articles$|/blog$|/blog/$|/contact$|/contact/$|/news$|/news/$|/tag$|/tag/$|/about$|/about-us$|/about-us/$|/privacypolicy|/terms-and-privacy/|javascript:|mailto:|all-posts$|all-posts/$|privacy-policy$|/page/\d+|/p/\d+|/posts/\d+|/articles/\d+|/blog/\d+|/news/\d+"
+                         (remove #(re-find #"(?i)#|/author/|/terms-and-privacy/|/article$|/articles$|/blog$|/blog/$|/contact$|/contact/$|/news$|/news/$|/insights$|/insights/$|/tag$|/tag/$|/about$|/about-us$|/about-us/$|/privacypolicy|/terms-and-privacy/|javascript:|mailto:|all-posts$|all-posts/$|privacy-policy$|/page/\d+|/p/\d+|/posts/\d+|/articles/\d+|/blog/\d+|/news/\d+|/insights/\d+"
                                            %))
                          distinct)
-        prefix-urls (filter #(re-find #"/blog/..*|/article/..*|/post..*|/news..*" %) filter-urls)]
+        prefix-urls (filter #(re-find #"/blog/..*|/article/..*|/post..*|/news..*|/insights/..*" %) filter-urls)]
     (if (<= 3 (count prefix-urls))
       prefix-urls
       filter-urls)))

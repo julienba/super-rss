@@ -52,7 +52,8 @@
   (xml/parse (java.io.ByteArrayInputStream. (.getBytes s))))
 
 (defn- fetch-sitemap [url]
-  (let [{:keys [status body]} (http/get url {:throw false})]
+  (let [{:keys [status body]} (http/get url {:throw false
+                                              :headers {"User-Agent" "super-rss sitemap-reader"}})]
     (when (= 200 status)
       (let [content-list (:content (parse-xml-string body))
             url-list (for [{:keys [content]} content-list
@@ -181,3 +182,4 @@
 ;; Good regresion test:
 ;; - "https://design.google": return a 308 and articles are prefix by the unusual '/library'
 ;; - https://rasa.com robots.txt use sitemap instead of Sitemap and there are multiple sitemap
+

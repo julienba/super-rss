@@ -1,5 +1,7 @@
 (ns super-rss.impl.sitemap-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as string]
+            [clojure.test :refer [deftest is testing]]
+            [super-rss.impl.common :as common]
             [super-rss.impl.sitemap :as sut]))
 
 (deftest test-url->title
@@ -196,4 +198,116 @@
                                                        {:key "Host", :value "https://dust.tt"}
                                                        {:key "# Sitemaps", :value nil}
                                                        {:key "Sitemap", :value "https://dust.tt/sitemap.xml"}])))))
+
+(defn- parse-sitemap-entry
+  "Extract URL and lastmod from a sitemap entry."
+  [{:keys [content]}]
+  (let [url (->> content
+                 (filter #(= :loc (:tag %)))
+                 first
+                 :content
+                 first)
+        lastmod (->> content
+                     (filter #(= :lastmod (:tag %)))
+                     first
+                     :content
+                     first)]
+    {:url url
+     :lastmod (when lastmod
+                (try
+                  (clojure.instant/read-instant-date lastmod)
+                  (catch Exception _)))}))
+
+(defn- has-article-prefix?
+  "Check if a URL (without base URL) matches the article prefix pattern."
+  [base-url url-entry]
+  (when-let [url (:url url-entry)]
+    (re-find common/article-prefix (string/replace-first url base-url ""))))
+
+(defn- is-blog-url?
+  "Check if a URL is a valid blog URL."
+  [url-entry]
+  (when-let [url (:url url-entry)]
+    (common/blog-url? url)))
+
+(defn- non-nil-url?
+  "Check if URL entry has a non-nil URL."
+  [url-entry]
+  (some? (:url url-entry)))
+
+(def mock-insights-sitemap-xml
+  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+  <urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">
+    <url>
+      <loc>https://gamma.app/insights/</loc>
+      <lastmod>2024-01-15T10:00:00Z</lastmod>
+    </url>
+    <url>
+      <loc>https://gamma.app/insights/ai-powered-presentations</loc>
+      <lastmod>2024-01-20T10:00:00Z</lastmod>
+    </url>
+    <url>
+      <loc>https://gamma.app/insights/future-of-work</loc>
+      <lastmod>2024-01-25T10:00:00Z</lastmod>
+    </url>
+    <url>
+      <loc>https://gamma.app/insights/productivity-tips</loc>
+      <lastmod>2024-01-30T10:00:00Z</lastmod>
+    </url>
+    <url>
+      <loc>https://gamma.app/about</loc>
+      <lastmod>2024-01-10T10:00:00Z</lastmod>
+    </url>
+    <url>
+      <loc>https://gamma.app/contact</loc>
+      <lastmod>2024-01-10T10:00:00Z</lastmod>
+    </url>
+    <url>
+      <loc>https://gamma.app/insights/2</loc>
+      <lastmod>2024-01-15T10:00:00Z</lastmod>
+    </url>
+  </urlset>")
+
+(deftest test-sitemap-with-insights-urls
+  (testing "Sitemap with /insights/ URLs should be recognized and filtered correctly"
+    (let [base-url "https://gamma.app"
+          parsed-sitemap (#'sut/parse-xml-string mock-insights-sitemap-xml)
+          content-list (:content parsed-sitemap)
+          url-list (map parse-sitemap-entry content-list)]
+
+      (is (common/blog-url? "https://gamma.app/insights/ai-powered-presentations")
+          "/insights/ URLs should be recognized as blog URLs")
+      (is (not (common/blog-url? "https://gamma.app/insights/"))
+          "/insights/ root should not be recognized as blog URL")
+      (is (not (common/blog-url? "https://gamma.app/insights/2"))
+          "/insights/ pagination should not be recognized as blog URL")
+
+      (is (re-find common/article-prefix "/insights/ai-powered-presentations")
+          "article-prefix should match /insights URLs")
+
+      (let [sitemap-contents-filter (->> url-list
+                                         (filter non-nil-url?)
+                                         (filter #(has-article-prefix? base-url %)))
+            urls-prefixed? (< 2 (count sitemap-contents-filter))
+            clean-sitemap-contents (if urls-prefixed?
+                                     sitemap-contents-filter
+                                     url-list)
+            clean-sitemap-contents (->> clean-sitemap-contents
+                                        (remove nil?)
+                                        (filter non-nil-url?)
+                                        (filter is-blog-url?))]
+        (is (some #(= (:url %) "https://gamma.app/insights/ai-powered-presentations") clean-sitemap-contents)
+            "Should include /insights/ article URLs")
+        (is (some #(= (:url %) "https://gamma.app/insights/future-of-work") clean-sitemap-contents)
+            "Should include /insights/ article URLs")
+        (is (some #(= (:url %) "https://gamma.app/insights/productivity-tips") clean-sitemap-contents)
+            "Should include /insights/ article URLs")
+        (is (not-any? #(= (:url %) "https://gamma.app/insights/") clean-sitemap-contents)
+            "Should exclude /insights/ root URL")
+        (is (not-any? #(= (:url %) "https://gamma.app/insights/2") clean-sitemap-contents)
+            "Should exclude /insights/ pagination URLs")
+        (is (not-any? #(= (:url %) "https://gamma.app/about") clean-sitemap-contents)
+            "Should exclude non-article URLs")
+        (is (not-any? #(= (:url %) "https://gamma.app/contact") clean-sitemap-contents)
+            "Should exclude non-article URLs")))))
 
