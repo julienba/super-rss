@@ -1,7 +1,7 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.12.4"}
         org.clojure/core.cache {:mvn/version "1.1.234"}
-        org.clojure/tools.logging {:mvn/version "1.3.0"}
+        org.clojure/tools.logging {:mvn/version "1.3.1"}
         ch.qos.logback/logback-classic {:mvn/version "1.5.23"}
         clojure.java-time/clojure.java-time {:mvn/version "1.4.3"}
         enlive/enlive {:mvn/version "1.1.6"
@@ -10,7 +10,7 @@
         org.clj-commons/hickory {:mvn/version "0.7.7"}
         com.exoscale/ok-http {:mvn/version "1.0.0-alpha32"}}
  :aliases {:dev {:extra-paths ["dev-resources"]
-                 :extra-deps {nrepl/nrepl {:mvn/version "1.5.1"}}}
+                 :extra-deps {nrepl/nrepl {:mvn/version "1.5.2"}}}
            :test {:extra-paths ["test" "test/resources"]
                   :extra-deps {lambdaisland/kaocha {:mvn/version "1.91.1392"}
                                lambdaisland/kaocha-cloverage {:mvn/version "1.1.89"}}}
