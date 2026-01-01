@@ -29,3 +29,6 @@ pom.xml.asc
 
 .clojure-mcp
 .cpcache
+
+# debug file
+tmp

@@ -10,6 +10,7 @@
                              "/content/"
                              "/news/"
                              "/article/"
+                             "/articles/"
                              "/library/"
                              "/insights/"})
 
