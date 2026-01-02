@@ -44,7 +44,7 @@
     correct-feed-url
     (when-let [link-feed-url (->> (html/select content [:a])
                                   (filter (fn [node]
-                                            (and (re-find #"RSS" (apply str (:content node)))
+                                            (and (re-find #"(?i)RSS" (apply str (:content node)))
                                                  (get-in node [:attrs :href])
                                                  (or (string/starts-with? (get-in node [:attrs :href]) "/")
                                                      (string/starts-with? (get-in node [:attrs :href]) (util/get-base-url website-url))))))

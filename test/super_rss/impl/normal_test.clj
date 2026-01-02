@@ -1,5 +1,6 @@
 (ns super-rss.impl.normal-test
-  (:require [clojure.test :refer [deftest testing are]]
+  (:require [clojure.test :refer [deftest testing are is]]
+            [net.cgrand.enlive-html :as html]
             [super-rss.impl.normal :as sut]))
 
 (defn- response [status content-type body]
@@ -76,3 +77,29 @@
       "" "<?xml version=\"1.0\"?><rss></rss>" "Missing content-type"
       "text/plain" "<?xml version=\"1.0\"?><rss></rss>" "Plain text content-type"
       "application/json" "<?xml version=\"1.0\"?><rss></rss>" "JSON content-type")))
+
+(defn- html->enlive [html-str]
+  (html/html-resource (java.io.StringReader. html-str)))
+
+(deftest find-feed-url-from-anchor-test
+  (testing "RSS link detection is case-insensitive"
+    (are [anchor-text description]
+         (= "/feed/"
+            (#'sut/find-feed-url' "https://example.com"
+                                  (html->enlive (format "<html><body><a href=\"/feed/\">%s</a></body></html>"
+                                                        anchor-text))))
+      "RSS" "uppercase RSS"
+      "Rss" "title case Rss (carbonbrief style)"
+      "rss" "lowercase rss"
+      "RSS Feed" "RSS with extra text"
+      "Our RSS" "RSS with prefix"
+      "<i class=\"icon\"></i> Rss" "Rss with icon element (carbonbrief)"))
+
+  (testing "Non-RSS links are not detected"
+    (are [anchor-text description]
+         (nil? (#'sut/find-feed-url' "https://example.com"
+                                     (html->enlive (format "<html><body><a href=\"/other/\">%s</a></body></html>"
+                                                           anchor-text))))
+      "Subscribe" "subscribe link"
+      "News" "news link"
+      "R S S" "spaced out letters")))
