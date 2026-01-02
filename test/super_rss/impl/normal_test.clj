@@ -1,5 +1,6 @@
 (ns super-rss.impl.normal-test
-  (:require [clojure.test :refer [deftest testing are]]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer [deftest testing are is]]
             [net.cgrand.enlive-html :as html]
             [super-rss.impl.normal :as sut]))
 
@@ -72,11 +73,11 @@
       "application/rss+xml" "" "Empty string body"
       "application/rss+xml" "not xml content" "Non-XML body content"))
 
-  (testing "Invalid responses - missing or invalid content-type"
+  (testing "Invalid responses - missing or invalid content-type AND non-RSS body"
     (are [content-type body description] (not (sut/valid-rss-response? (response 200 content-type body)))
-      "" "<?xml version=\"1.0\"?><rss></rss>" "Missing content-type"
-      "text/plain" "<?xml version=\"1.0\"?><rss></rss>" "Plain text content-type"
-      "application/json" "<?xml version=\"1.0\"?><rss></rss>" "JSON content-type")))
+      "" "<!doctype html><html></html>" "Missing content-type with HTML body"
+      "text/plain" "just some plain text" "Plain text content-type with plain text body"
+      "application/json" "{\"title\": \"not rss\"}" "JSON content-type with JSON body")))
 
 (defn- html->enlive [html-str]
   (html/html-resource (java.io.StringReader. html-str)))
@@ -103,3 +104,59 @@
       "Subscribe" "subscribe link"
       "News" "news link"
       "R S S" "spaced out letters")))
+
+(deftest valid-rss-response?-body-fallback-test
+  (testing "Valid responses with wrong content-type but valid RSS body"
+    (are [content-type body description]
+         (sut/valid-rss-response? (response 200 content-type body))
+
+      "text/html; charset=utf-8"
+      "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>Test</title></channel></rss>"
+      "RSS body with text/html content-type (common server misconfiguration)"
+
+      "text/html"
+      "<rss version=\"2.0\"><channel><title>Test</title></channel></rss>"
+      "RSS without XML declaration, text/html content-type"
+
+      "text/plain"
+      "<?xml version=\"1.0\"?><feed xmlns=\"http://www.w3.org/2005/Atom\"><title>Test</title></feed>"
+      "Atom body with text/plain content-type"
+
+      "application/octet-stream"
+      "<rss version=\"2.0\"><channel></channel></rss>"
+      "RSS with binary content-type"))
+
+  (testing "Invalid responses - wrong content-type AND invalid body"
+    (are [content-type body description]
+         (not (sut/valid-rss-response? (response 200 content-type body)))
+
+      "text/html; charset=UTF-8"
+      "<!doctype html><html><head></head><body></body></html>"
+      "HTML response with text/html content-type"
+
+      "text/html"
+      "<?xml version=\"1.0\"?><html></html>"
+      "XML document that is HTML, not RSS"
+
+      "text/plain"
+      "Just some plain text"
+      "Plain text with wrong content-type")))
+
+(deftest parse-rss-from-body-test
+  (testing "Parsing RSS from body with wrong content-type scenario"
+    (let [rss-body (slurp (io/resource "normal/wrong_content_type_rss.xml"))
+          result (#'sut/parse-rss-from-body rss-body)]
+      (is (some? result) "Should parse valid RSS body")
+      (is (= "Chris McCormick - News" (:title result)) "Should extract title")
+      (is (pos? (count (:entries result))) "Should have entries")
+      (let [first-entry (first (:entries result))]
+        (is (some? (:title first-entry)) "First entry should have title")
+        (is (some? (:published-date first-entry)) "First entry should have date"))))
+
+  (testing "Returns nil for non-RSS body"
+    (is (nil? (#'sut/parse-rss-from-body "<!doctype html><html></html>"))
+        "Should return nil for HTML")
+    (is (nil? (#'sut/parse-rss-from-body "Just plain text"))
+        "Should return nil for plain text")
+    (is (nil? (#'sut/parse-rss-from-body nil))
+        "Should return nil for nil input")))
