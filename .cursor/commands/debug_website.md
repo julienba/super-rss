@@ -1,37 +1,39 @@
-# Debug New website
+# Debug New Website
 
-## Overview
+## Input
+- `$URL` - The website URL to analyze
 
-Your goal is to process the URL to find the best way to create a new feeds from it.
+## Goal
+Find the best method to create an RSS feed from this website using `super-rss.core/get-feed`.
 
 ## Steps
 
-### Finding the best method
+### 1. Test with existing methods
+Using `clj-nrepl-eval`, try the automatic detection:
+```clojure
+(require '[super-rss.core :as core] :reload)
+(core/get-feed "$URL" {} {})
+```
 
-1. The website has an RSS feed
+If this returns results with entries (containing `:link`, `:title`, `:date`), stop here.
 
-Use `curl` to fetch the website` and search for a RSS links. If you find one this is the best way to create a new feeds.
+### 2. Manual investigation
+If auto-detection fails, investigate manually:
 
-2. The website has a sitemap
+1. **RSS feed** - Fetch the page and look for `<link rel="alternate" type="application/rss+xml">` in `<head>`
+2. **robots.txt** - Check `$URL/robots.txt` for `Sitemap:` directives
+3. **Direct sitemap** - Try `$URL/sitemap.xml` or `$URL/sitemap_index.xml`
+4. **Page links** - Look for article-like URLs with dates/slugs
 
-Using `curl` search if the website has a sitemap. It's often part of the robots.txt
+Store all curl output in `tmp/` with descriptive names (e.g., `tmp/example_robots.txt`).
 
-3. Creating a feed from the page
+### 3. Debug and plan
+If a method should work but doesn't:
+1. Identify the failure point in the relevant impl (`normal.clj`, `sitemap.clj`, etc.)
+2. Create a plan for a **generic** fix (not site-specific)
+3. Include unit tests using saved HTML/XML from `tmp/`
 
-Look for links in the website that looks like blog article and can be used for creating a news feeds.
-
-
-### Making it works with `core/get-feed`
-
-Using clojure-mcp use the medthod find with curl and the URL to create a news feed. If it's working you can stop here.
-If it's not working debug the code to identify why.
-Once you find why, create a plan to improve the code to support this website.
-
-
-### Instructions
-
-- Keep in mind that super-rss needs to support has many website has possible. Do NOT hardcode a solution for a website. Think of generic solution that might work on other website
-- The plan needs to include unit-test for prevent future regression
-- All the curl output should be stored in `tmp/` for further debugging
-
-
+## Rules
+- Solutions must work across many websites — no hardcoding
+- DO NOT implement until explicitly asked
+- All plans must include test coverage
