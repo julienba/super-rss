@@ -1,5 +1,5 @@
 (ns super-rss.impl.normal-test
-  (:require [clojure.test :refer [deftest testing are is]]
+  (:require [clojure.test :refer [deftest testing are]]
             [net.cgrand.enlive-html :as html]
             [super-rss.impl.normal :as sut]))
 
