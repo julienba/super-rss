@@ -1,6 +1,7 @@
 (ns super-rss.core
   (:require clojure.instant
             [clojure.tools.logging :as log]
+            [super-rss.error :as error]
             [super-rss.impl.flat-smart-links :as impl.flat-smart-links]
             [super-rss.impl.normal :as impl.normal]
             [super-rss.impl.sitemap :as impl.sitemap]
@@ -69,6 +70,10 @@
               (when-not (empty? (:data result))
                 (log/infof "Fetch %s using method %s" url method)
                 (build-result result))))]
-    (if method
-      (try-method method)
-      (some try-method method-options))))
+    (try
+      (if method
+        (try-method method)
+        (some try-method method-options))
+      ; Nothing leaves get-feed unclassified, whichever strategy raised it
+      (catch Exception e
+        (throw (error/feed-error url e))))))

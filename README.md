@@ -43,6 +43,19 @@ Useful to not crawl over and over the same page for big sitemap.
 (sr/get-feed "http://website.com/" {:method :sitemap} {:already-ingest? already-ingest?})
 ```
 
+## Telling failures apart
+With `{:throw? true}` every exception super-rss raises carries `ex-data`, so a caller can
+tell a permanently dead source from a blip instead of counting all failures the same:
+```clj
+{:super-rss/error :dns     ; :dns :timeout :http-status :challenge :parse :unknown
+ :url    "https://example.com/feed"
+ :status 403               ; only when the failure arrived with an HTTP response
+ :cause  "example.com"}
+```
+`:dns` and a `404` are worth giving up on; `:timeout` and `:challenge` are worth retrying.
+Note that `:challenge` keys on `cf-mitigated` or the interstitial body, never on
+`server: cloudflare` - plenty of ordinary origin errors are served through Cloudflare.
+
 ## Limitations
 - Filtering what looks like a feed entry won't work all the time
 - Parsing an HTML page for finding a date is obviously not gonna work all the time.

@@ -3,6 +3,7 @@
             [clojure.tools.logging :as log]
             [net.cgrand.enlive-html :as html]
             [remus :as remus]
+            [super-rss.error :as error]
             [super-rss.html :as rss.html]
             [super-rss.http :as http]
             [super-rss.util :as util])
@@ -118,19 +119,24 @@
                 (or (parse-rss-from-body body)
                     (do
                       (log/errorf "Fallback parse failed for %s" url)
-                      (when throw? (throw e)))))
+                      (when throw?
+                        ; A challenge or a 403 on the fallback fetch is the real story,
+                        ; not the content-type error that sent us here
+                        (throw (if (error/classify-response response)
+                                 (error/response-error url response)
+                                 (error/feed-error url e)))))))
               (catch Exception fetch-e
                 (log/errorf "Fallback fetch failed for %s: %s" url (ex-message fetch-e))
-                (when throw? (throw e)))))
+                (when throw? (throw (error/feed-error url fetch-e))))))
           (do
             (log/errorf "Fail to fetch url %s : %s" url msg)
-            (when throw? (throw e))))))
+            (when throw? (throw (error/feed-error url e)))))))
     (catch clojure.lang.ExceptionInfo e
       (let [response (ex-data e)]
         (log/errorf "Fail to fetch url %s %s" url response)
         (when throw?
-          (throw e))))
+          (throw (error/feed-error url e response)))))
     (catch Exception e
       (log/errorf "Fail to fetch url %s : %s" url (ex-message e))
       (when throw?
-        (throw e)))))
+        (throw (error/feed-error url e))))))
