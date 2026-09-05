@@ -43,6 +43,14 @@ Useful to not crawl over and over the same page for big sitemap.
 (sr/get-feed "http://website.com/" {:method :sitemap} {:already-ingest? already-ingest?})
 ```
 
+## Identifying yourself
+super-rss sends `User-Agent: super-rss/1.0 (+https://github.com/julienba/super-rss)` by default.
+Pass `:user-agent` to say who you are instead - a contact URL is what allow-lists key on,
+and it leaves a site owner someone to contact rather than a reason to ban.
+```clj
+(sr/get-feed "http://website.com/" {:user-agent "my-reader/2.0 (+https://example.com/bot)"} {})
+```
+
 ## Limitations
 - Filtering what looks like a feed entry won't work all the time
 - Parsing an HTML page for finding a date is obviously not gonna work all the time.

@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest testing are is]]
             [net.cgrand.enlive-html :as html]
+            [super-rss.http]
             [super-rss.impl.normal :as sut]))
 
 (defn- response [status content-type body]
@@ -160,3 +161,21 @@
         "Should return nil for plain text")
     (is (nil? (#'sut/parse-rss-from-body nil))
         "Should return nil for nil input")))
+
+(deftest validate-rss-url-headers-test
+  (let [captured (atom nil)
+        stub (fn [_url opts]
+               (reset! captured opts)
+               (response 200 "application/rss+xml" "<rss version=\"2.0\"><channel></channel></rss>"))]
+    (testing "the default User-Agent is used when no :user-agent option is supplied"
+      (with-redefs [super-rss.http/get stub]
+        (sut/validate-rss-url "https://example.com/feed" {})
+        (is (= (str super-rss.http/default-user-agent " rss-validator")
+               (get-in @captured [:headers "User-Agent"])))
+        (is (= super-rss.http/accept (get-in @captured [:headers "Accept"])))))
+
+    (testing "a configured :user-agent reaches http/get"
+      (with-redefs [super-rss.http/get stub]
+        (sut/validate-rss-url "https://example.com/feed" {:user-agent "my-reader/2.0 (+https://example.com)"})
+        (is (= "my-reader/2.0 (+https://example.com) rss-validator"
+               (get-in @captured [:headers "User-Agent"])))))))

@@ -35,10 +35,10 @@
 
 (defn validate-rss-url
   "Check if a URL returns valid RSS content. Returns the URL if valid, nil otherwise."
-  [url {:keys [timeout]}]
+  [url {:keys [timeout] :as opts}]
   (try
     (let [response (http/get url {:timeout-ms (or timeout 10000)
-                                  :headers {"User-Agent" "super-rss rss-validator"}})]
+                                  :headers (http/headers "rss-validator" opts)})]
       (if (valid-rss-response? response)
         url
         (do
@@ -74,7 +74,7 @@
    Returns the absolute feed URL if valid, nil otherwise."
   [website-url {:keys [_timeout] :as opts}]
   (try
-    (let [content (rss.html/fetch website-url {"User-Agent" "super-rss rss-reader"})]
+    (let [content (rss.html/fetch website-url (http/headers "rss-reader" opts))]
       (when-let [feed-url (find-feed-url' website-url content)]
         (let [absolute-url (feed-url->absolute-feed-url website-url feed-url)]
           (validate-rss-url absolute-url opts))))
@@ -97,11 +97,11 @@
 (defn fetch-rss
   "Fetch feed, works with all RSS format.
    Falls back to manual parsing when server returns wrong content-type."
-  [url {:keys [timeout throw?]}]
+  [url {:keys [timeout throw?] :as opts}]
   (try
     (let [{:keys [feed]} (remus/parse-url url {:insecure? true
                                                :connection-timeout timeout
-                                               :headers {"User-Agent" "super-rss rss-reader"}})]
+                                               :headers (http/headers "rss-reader" opts)})]
       {:title (some-> (:title feed) (string/trim))
        :description (some-> (:description feed) (string/trim))
        :entries (:entries feed)})
@@ -113,7 +113,7 @@
             (log/debugf "Content-type mismatch for %s, attempting body parse" url)
             (try
               (let [response (http/get url {:timeout-ms (or timeout 10000)
-                                            :headers {"User-Agent" "super-rss rss-reader"}})
+                                            :headers (http/headers "rss-reader" opts)})
                     body (:body response)]
                 (or (parse-rss-from-body body)
                     (do
