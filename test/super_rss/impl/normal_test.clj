@@ -136,7 +136,11 @@
 
       "text/html; charset=utf-8"
       "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"></rdf:RDF>"
-      "RSS 1.0 with a namespace-prefixed root element"))
+      "RSS 1.0 with a namespace-prefixed root element"
+
+      "text/html; charset=utf-8"
+      "<atom:feed xmlns:atom=\"http://www.w3.org/2005/Atom\"></atom:feed>"
+      "Atom with a namespace-prefixed root element"))
 
   (testing "Invalid responses - wrong content-type AND invalid body"
     (are [content-type body description]
@@ -160,7 +164,15 @@
 
       "text/html"
       "<html><body><rssi>not a feed</rssi></body></html>"
-      "HTML containing an <rssi> element")))
+      "HTML containing an <rssi> element"
+
+      "text/html"
+      "<html><body><feed-item>a</feed-item><rss-feed>b</rss-feed></body></html>"
+      "HTML containing <feed-item> / <rss-feed> custom elements"
+
+      "text/html"
+      "<html><body><x:xmpmeta><rdf:Description rdf:about=\"\"/></x:xmpmeta></body></html>"
+      "HTML containing an embedded XMP <rdf:Description> block")))
 
 (deftest parse-rss-from-body-test
   (testing "Parsing RSS from body with wrong content-type scenario"

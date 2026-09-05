@@ -10,13 +10,13 @@
 
 (defn- body-looks-like-rss?
   "Check if body content clearly looks like an RSS/Atom/RDF feed.
-   Matches on the root element name only: XML attribute order is arbitrary, so
-   requiring `xmlns` right after `feed`/`RDF` missed valid Atom and RDF feeds.
    Used as fallback when content-type is incorrect (e.g., text/html for RSS)."
   [body]
   (when body
-    ;; \b keeps <feedback> and <rssi> out
-    (re-find #"(?i)<(rss|feed|RDF)\b" body)))
+    ;; The element name must end the token, otherwise every <feed-item> custom
+    ;; element and every <rdf:Description> metadata block reads as a feed.
+    ;; Attribute order is irrelevant: xmlns is not required to come first.
+    (re-find #"(?i)<(?:[a-z][\w.-]*:)?(?:rss|feed|RDF)(?=[\s/>])" body)))
 
 (defn valid-rss-response?
   "Check if HTTP response looks like a valid RSS/Atom feed.
