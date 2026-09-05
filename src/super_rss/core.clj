@@ -10,30 +10,30 @@
   "Different implementation for creating an RSS feed"
   (fn [method _url _opts] method))
 
-(defmethod fetch :direct-rss [_ url {:keys [timeout throw?]}]
-  (when-let [result (impl.normal/fetch-rss url {:throw? throw? :timeout timeout})]
+(defmethod fetch :direct-rss [_ url {:keys [timeout throw? user-agent]}]
+  (when-let [result (impl.normal/fetch-rss url {:throw? throw? :timeout timeout :user-agent user-agent})]
     {:title (:title result)
      :description (:description result)
      :data (:entries result)
      :params {:method :direct-rss
               :url url}}))
 
-(defmethod fetch :find-rss-url [_ url {:keys [timeout throw?]}]
-  (when-let [feed-url (impl.normal/find-feed-url url {:timeout timeout})]
-    (when-let [result (impl.normal/fetch-rss feed-url {:throw? throw? :timeout timeout})]
+(defmethod fetch :find-rss-url [_ url {:keys [timeout throw? user-agent]}]
+  (when-let [feed-url (impl.normal/find-feed-url url {:timeout timeout :user-agent user-agent})]
+    (when-let [result (impl.normal/fetch-rss feed-url {:throw? throw? :timeout timeout :user-agent user-agent})]
       {:title (:title result)
        :description (:description result)
        :data (:entries result)
        :params {:method :direct-rss
                 :url feed-url}})))
 
-(defmethod fetch :smart-links [_ url _]
-  {:data (impl.smart-links/poor-man-rss-html url)
+(defmethod fetch :smart-links [_ url opts]
+  {:data (impl.smart-links/poor-man-rss-html url opts)
    :params {:method :smart-links
             :url url}})
 
-(defmethod fetch :flat-smart-links [_ url _]
-  {:data (impl.flat-smart-links/flat-poor-man-rss-html url)
+(defmethod fetch :flat-smart-links [_ url opts]
+  {:data (impl.flat-smart-links/flat-poor-man-rss-html url opts)
    :params {:method :flat-smart-links
             :url url}})
 
@@ -50,9 +50,10 @@
   "Fetch fetch with different strategies, from the normal one to the \"hacky\" one.
    `method:` when you know which method to use to get a feed
    `method-options:` list of strategy
+   `user-agent:` how to identify to the servers being crawled, defaults to `http/default-user-agent`
    Return a map of `:data` with the RSS feed and `:method` with the method used to retrieve the feed."
   [url
-   {:keys [method method-options throw? timeout]
+   {:keys [method method-options throw? timeout user-agent]
     :or {method-options [:find-rss-url :sitemap :smart-links :flat-smart-links]
          throw? false
          timeout 10000}}
@@ -65,7 +66,8 @@
           (try-method [method]
             (when-let [result (fetch method url {:handlers handler-fns
                                                  :throw? throw?
-                                                 :timeout timeout})]
+                                                 :timeout timeout
+                                                 :user-agent user-agent})]
               (when-not (empty? (:data result))
                 (log/infof "Fetch %s using method %s" url method)
                 (build-result result))))]

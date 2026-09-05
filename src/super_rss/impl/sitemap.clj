@@ -24,14 +24,14 @@
 
 (defn- find-sitemap-url-in-robots
   "Look in the robots.txt if there is a sitemap defined"
-  [base-url]
-  (when-let [robots-vec (robots-txt/get-robots-txt base-url)]
+  [base-url opts]
+  (when-let [robots-vec (robots-txt/get-robots-txt base-url opts)]
     (find-sitemap-url-in-robots-contents base-url robots-vec)))
 
 (defn- find-sitemap-url-in-html
   "Look if the sitemap is specify in the html head"
-  [base-url]
-  (let [content (rss.html/fetch (str base-url "/") {"User-Agent" "super-rss sitemap-finder"})]
+  [base-url opts]
+  (let [content (rss.html/fetch (str base-url "/") (http/headers "sitemap-finder" http/html-accept opts))]
     (when-let [url (->> (html/select content [:head :link])
                         (filter (fn [{:keys [attrs]}] (= "sitemap" (:rel attrs))))
                         first
@@ -40,20 +40,21 @@
         (str base-url url)
         url))))
 
-(defn- find-sitemap-url [base-url]
-  (or (find-sitemap-url-in-robots base-url)
-      (find-sitemap-url-in-html base-url)
+(defn- find-sitemap-url [base-url opts]
+  (or (find-sitemap-url-in-robots base-url opts)
+      (find-sitemap-url-in-html base-url opts)
       ; Give a try to a classic sitemap URL
-      (let [{:keys [status]} (http/get (str base-url "/sitemap.xml") {:throw-on-error false})]
+      (let [{:keys [status]} (http/get (str base-url "/sitemap.xml") {:throw-on-error false
+                                                                      :headers (http/headers "sitemap-finder" http/feed-accept opts)})]
         (when (= 200 status)
           (str base-url "/sitemap.xml")))))
 
 (defn- parse-xml-string [s]
   (xml/parse (java.io.ByteArrayInputStream. (.getBytes s))))
 
-(defn- fetch-sitemap [url]
+(defn- fetch-sitemap [url opts]
   (let [{:keys [status body]} (http/get url {:throw false
-                                              :headers {"User-Agent" "super-rss sitemap-reader"}})]
+                                             :headers (http/headers "sitemap-reader" http/feed-accept opts)})]
     (when (= 200 status)
       (let [content-list (:content (parse-xml-string body))
             url-list (for [{:keys [content]} content-list
@@ -70,10 +71,10 @@
              (reverse))))))
 
 (defn- sitemap-url->sitemap-contents
-  [url]
-  (let [sitemap-contents (fetch-sitemap url)]
+  [url opts]
+  (let [sitemap-contents (fetch-sitemap url opts)]
     (mapcat #(if (string/ends-with? (:url %) ".xml") ; sitemap can be in .gz, which is not supported right now
-               (fetch-sitemap (:url %)) ; It also parse the first "inner" sitemap (ie. a sitemap referring another sitemap)
+               (fetch-sitemap (:url %) opts) ; It also parse the first "inner" sitemap (ie. a sitemap referring another sitemap)
                [%])
             sitemap-contents)))
 
@@ -132,11 +133,11 @@
    Limitation:
    - page has to match common/blog-url?
    - read only the first pages (arbitrary limit to avoid crawling too much of a website)"
-  [url {:keys [handlers]}]
+  [url {:keys [handlers] :as opts}]
   (let [base-url (util/get-base-url url)
         sitemap-url (if (string/ends-with? url ".xml")
                       url
-                      (find-sitemap-url base-url))
+                      (find-sitemap-url base-url opts))
         data (cond
                (nil? sitemap-url)
                (log/debug "Cannot find sitemap for %s" url)
@@ -148,7 +149,7 @@
 
                :else
 
-               (when-let [sitemap-contents (sitemap-url->sitemap-contents sitemap-url)]
+               (when-let [sitemap-contents (sitemap-url->sitemap-contents sitemap-url opts)]
                  (let [sitemap-contents-filter (->> sitemap-contents
                                                     (remove #(nil? (:url %)))
                                                     (filter #(re-find common/article-prefix (string/replace-first (:url %) base-url ""))))
@@ -169,7 +170,7 @@
                                     false)))
                         (take page-crawl-limit)
                         (map (fn [{:keys [url lastmod]}]
-                               (try (cond-> (rss.html/extract-html-meta url)
+                               (try (cond-> (rss.html/extract-html-meta url opts)
                                       lastmod (assoc :published-date lastmod))
                                     (catch Exception e
                                       ; Sitemap can contains non-working page (404, redirect loop, etc)

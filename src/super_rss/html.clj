@@ -58,19 +58,21 @@
 
 (defn extract-simple-html-meta
   "Return the title and description of a webpage"
-  [url]
-  (let [data (fetch url {"User-Agent" "super-rss title+description-finder"})]
-    {:title       (some-> (get-page-title data) string/trim clean-title)
-     :description (some-> (get-page-description data) string/trim)}))
+  ([url] (extract-simple-html-meta url nil))
+  ([url opts]
+   (let [data (fetch url (http/headers "title+description-finder" http/html-accept opts))]
+     {:title       (some-> (get-page-title data) string/trim clean-title)
+      :description (some-> (get-page-description data) string/trim)})))
 
 (defn extract-html-meta
   "Return the minimal expected element for a RSS feed: title, description, published-date, link"
-  [url]
-  (let [data        (fetch url {"User-Agent" "super-rss build-rss-from-html"})
-        date        (get-page-date data)]
-    (merge (extract-simple-html-meta url)
-           {:published-date (when date (date/local-date->date date))
-            :link url})))
+  ([url] (extract-html-meta url nil))
+  ([url opts]
+   (let [data (fetch url (http/headers "build-rss-from-html" http/html-accept opts))
+         date (get-page-date data)]
+     (merge (extract-simple-html-meta url opts)
+            {:published-date (when date (date/local-date->date date))
+             :link url}))))
 
 (defn text
   "Returns the text value of a node join separated by a whitespace.

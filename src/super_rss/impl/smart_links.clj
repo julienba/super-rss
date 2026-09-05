@@ -6,6 +6,7 @@
             [net.cgrand.enlive-html :as html]
             [super-rss.date :as date]
             [super-rss.html :as rss.html]
+            [super-rss.http :as http]
             [super-rss.impl.common :as common]
             [super-rss.util :as util]))
 
@@ -260,9 +261,11 @@
                        (conj explored (first href-set))
                        (concat results founds)))))))
 
-(defn poor-man-rss-html [url]
-  (let [content (rss.html/fetch-hickory url {"User-Agent" "super-rss poor-man-rss"})
-        root-url (common/get-root-url url)
-        all-links (->> (find-all-links root-url content)
-                       (remove #(= url %)))]
-    (find-list root-url content all-links)))
+(defn poor-man-rss-html
+  ([url] (poor-man-rss-html url nil))
+  ([url opts]
+   (let [content (rss.html/fetch-hickory url (http/headers "poor-man-rss" http/html-accept opts))
+         root-url (common/get-root-url url)
+         all-links (->> (find-all-links root-url content)
+                        (remove #(= url %)))]
+     (find-list root-url content all-links))))

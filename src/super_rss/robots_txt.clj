@@ -6,14 +6,17 @@
   "If found return it as a vector of key map like:
     [{:key \"Sitemap\", :value \"https://yolo.cc/sitemap/sitemap.xml\"}
      {:key \"License\", :value \"https://medium.com/license.xml\"}])"
-  [base-url]
-  (let [{:keys [status body]} (http/get (str base-url "/robots.txt") {:throw-on-error false})]
-    (when (= 200 status)
-      (->> (string/split-lines body)
-           (remove string/blank?)
-           (map (fn [line]
-                  (let [[k v] (string/split line #": ")]
-                    {:key k :value v})))))))
+  ([base-url] (get-robots-txt base-url nil))
+  ([base-url opts]
+   (let [{:keys [status body]} (http/get (str base-url "/robots.txt")
+                                         {:throw-on-error false
+                                          :headers (http/headers "robots-txt-reader" nil opts)})]
+     (when (= 200 status)
+       (->> (string/split-lines body)
+            (remove string/blank?)
+            (map (fn [line]
+                   (let [[k v] (string/split line #": ")]
+                     {:key k :value v}))))))))
 
 (defn medium? [robots-vec]
   (some (fn [robots-line] (= {:key "License" :value "https://medium.com/license.xml"}
