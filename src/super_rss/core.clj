@@ -1,6 +1,7 @@
 (ns super-rss.core
   (:require clojure.instant
             [clojure.tools.logging :as log]
+            [super-rss.error :as error]
             [super-rss.impl.flat-smart-links :as impl.flat-smart-links]
             [super-rss.impl.normal :as impl.normal]
             [super-rss.impl.sitemap :as impl.sitemap]
@@ -19,7 +20,7 @@
               :url url}}))
 
 (defmethod fetch :find-rss-url [_ url {:keys [timeout throw?]}]
-  (when-let [feed-url (impl.normal/find-feed-url url {:timeout timeout})]
+  (when-let [feed-url (impl.normal/find-feed-url url {:timeout timeout :throw? throw?})]
     (when-let [result (impl.normal/fetch-rss feed-url {:throw? throw? :timeout timeout})]
       {:title (:title result)
        :description (:description result)
@@ -69,6 +70,10 @@
               (when-not (empty? (:data result))
                 (log/infof "Fetch %s using method %s" url method)
                 (build-result result))))]
-    (if method
-      (try-method method)
-      (some try-method method-options))))
+    (try
+      (if method
+        (try-method method)
+        (some try-method method-options))
+      ; Nothing leaves get-feed unclassified, whichever strategy raised it
+      (catch Exception e
+        (throw (error/feed-error url e))))))
