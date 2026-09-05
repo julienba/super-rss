@@ -48,10 +48,20 @@
   (log/errorf "Fetch method %s don't exist" method))
 
 (defn get-feed
-  "Fetch fetch with different strategies, from the normal one to the \"hacky\" one.
+  "Fetch a feed with different strategies, from the normal one to the \"hacky\" one.
    `method:` when you know which method to use to get a feed
-   `method-options:` list of strategy
-   Return a map of `:data` with the RSS feed and `:method` with the method used to retrieve the feed."
+   `method-options:` list of strategies, tried in order until one returns entries
+   `throw?:` raise when no strategy produced a feed and at least one failed (default false)
+   `timeout:` HTTP timeout in ms (default 10000)
+
+   A strategy that throws is skipped so the next one still gets its turn: a failing
+   strategy is expected, that is what the cascade is for. When every strategy failed and
+   `throw?` is true, one exception is raised carrying every failure in its `ex-data`,
+   see `super-rss.error/cascade-error`. With `throw?` false the run returns `nil`, which
+   is also what a run where every strategy simply found nothing returns.
+
+   Return a map of `:results` with the feed entries, `:title`, `:description` and
+   `:params` holding the `:method` and `:url` that produced them."
   [url
    {:keys [method method-options throw? timeout]
     :or {method-options [:find-rss-url :sitemap :smart-links :flat-smart-links]
@@ -64,16 +74,27 @@
              :description (:description result)
              :results (:data result)})
           (try-method [method]
-            (when-let [result (fetch method url {:handlers handler-fns
-                                                 :throw? throw?
-                                                 :timeout timeout})]
-              (when-not (empty? (:data result))
-                (log/infof "Fetch %s using method %s" url method)
-                (build-result result))))]
-    (try
-      (if method
-        (try-method method)
-        (some try-method method-options))
-      ; Nothing leaves get-feed unclassified, whichever strategy raised it
-      (catch Exception e
-        (throw (error/feed-error url e))))))
+            ; {:result r} on success, {:error e} on failure, nil when it found nothing
+            (try
+              (when-let [result (fetch method url {:handlers handler-fns
+                                                   :throw? throw?
+                                                   :timeout timeout})]
+                (when-not (empty? (:data result))
+                  (log/infof "Fetch %s using method %s" url method)
+                  {:result (build-result result)}))
+              (catch Exception e
+                (log/debugf e "Method %s failed for %s" method url)
+                {:error e})))]
+    (loop [[method & more] (if method [method] method-options)
+           failures []]
+      (if-not method
+        (when (seq failures)
+          (if throw?
+            (throw (error/cascade-error url failures))
+            (log/warnf "No strategy produced a feed for %s: %s" url
+                       (error/summarize-failures url failures))))
+        (let [{:keys [result error]} (try-method method)]
+          (cond
+            result result
+            error (recur more (conj failures {:method method :error error}))
+            :else (recur more failures)))))))

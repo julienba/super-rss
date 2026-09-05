@@ -62,6 +62,20 @@ that simply found nothing returns. A challenge is only ever recognised where the
 headers are in hand - `remus` reports a non-2xx with the status alone, so a feed fetched
 directly behind a bot block classifies `:http-status` rather than `:challenge`.
 
+A strategy that throws does not end the run: it is skipped and the next one gets its turn,
+so a broken sitemap no longer hides a page the link scraper reads fine. `get-feed` only
+raises when *every* strategy failed and at least one threw. The exception then carries the
+most informative failure - the first one that is not `:unknown`, since the strategies run
+from the most specific to the most hacky - plus every failure in run order:
+```clj
+{:super-rss/error :dns
+ :url    "https://example.com"
+ :cause  "example.com"
+ :method :find-rss-url                 ; the strategy whose failure speaks for the run
+ :errors [{:method :find-rss-url :super-rss/error :dns     :url "https://example.com" :cause "example.com"}
+          {:method :sitemap      :super-rss/error :unknown :url "https://example.com" :cause "..."}]}
+```
+
 ## Limitations
 - Filtering what looks like a feed entry won't work all the time
 - Parsing an HTML page for finding a date is obviously not gonna work all the time.
