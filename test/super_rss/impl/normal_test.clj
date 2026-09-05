@@ -124,7 +124,19 @@
 
       "application/octet-stream"
       "<rss version=\"2.0\"><channel></channel></rss>"
-      "RSS with binary content-type"))
+      "RSS with binary content-type"
+
+      "text/html; charset=utf-8"
+      "<feed xml:lang=\"en-US\" xmlns=\"http://www.w3.org/2005/Atom\"><title>Test</title></feed>"
+      "Atom whose root element has another attribute before xmlns"
+
+      "text/html; charset=utf-8"
+      "<RDF xml:base=\"https://example.com\" xmlns=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"></RDF>"
+      "RDF whose root element has another attribute before xmlns"
+
+      "text/html; charset=utf-8"
+      "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"></rdf:RDF>"
+      "RSS 1.0 with a namespace-prefixed root element"))
 
   (testing "Invalid responses - wrong content-type AND invalid body"
     (are [content-type body description]
@@ -140,7 +152,15 @@
 
       "text/plain"
       "Just some plain text"
-      "Plain text with wrong content-type")))
+      "Plain text with wrong content-type"
+
+      "text/html"
+      "<!doctype html><html><body><div class=\"feedback\"><feedback>hi</feedback></div></body></html>"
+      "HTML containing a <feedback> element"
+
+      "text/html"
+      "<html><body><rssi>not a feed</rssi></body></html>"
+      "HTML containing an <rssi> element")))
 
 (deftest parse-rss-from-body-test
   (testing "Parsing RSS from body with wrong content-type scenario"

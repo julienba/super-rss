@@ -10,12 +10,13 @@
 
 (defn- body-looks-like-rss?
   "Check if body content clearly looks like an RSS/Atom/RDF feed.
-   More specific than just checking for XML declaration - validates actual feed elements.
+   Matches on the root element name only: XML attribute order is arbitrary, so
+   requiring `xmlns` right after `feed`/`RDF` missed valid Atom and RDF feeds.
    Used as fallback when content-type is incorrect (e.g., text/html for RSS)."
   [body]
   (when body
-    ;; Check for actual RSS/Atom/RDF elements, not just XML declaration
-    (re-find #"(?i)<(rss\b|feed\s+xmlns|RDF\s+xmlns)" body)))
+    ;; \b keeps <feedback> and <rssi> out
+    (re-find #"(?i)<(rss|feed|RDF)\b" body)))
 
 (defn valid-rss-response?
   "Check if HTTP response looks like a valid RSS/Atom feed.
