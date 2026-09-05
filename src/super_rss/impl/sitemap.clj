@@ -40,34 +40,55 @@
         (str base-url url)
         url))))
 
+(defn- body-looks-like-xml?
+  "A sitemap path very often answers 200 with an SPA shell or a soft-404 HTML page.
+   Only a body opening on an XML declaration or a sitemap root is worth parsing."
+  [body]
+  (when body
+    (re-find #"(?i)^[\s\uFEFF]*(<\?xml|<urlset|<sitemapindex)" body)))
+
 (defn- find-sitemap-url [base-url]
   (or (find-sitemap-url-in-robots base-url)
       (find-sitemap-url-in-html base-url)
       ; Give a try to a classic sitemap URL
-      (let [{:keys [status]} (http/get (str base-url "/sitemap.xml") {:throw-on-error false})]
-        (when (= 200 status)
-          (str base-url "/sitemap.xml")))))
+      (let [url (str base-url "/sitemap.xml")
+            {:keys [status body]} (http/get url {:throw-on-error false})]
+        ; Plenty of sites answer this path with their SPA shell or a soft-404 page
+        (when (and (= 200 status) (body-looks-like-xml? body))
+          url))))
 
-(defn- parse-xml-string [s]
-  (xml/parse (java.io.ByteArrayInputStream. (.getBytes s))))
+(defn- parse-xml-string
+  "Parse a sitemap body, or return nil when it is not XML or is malformed.
+   A sitemap that cannot be parsed degrades to \"no sitemap\" instead of throwing
+   through the whole strategy cascade."
+  [s]
+  (when (body-looks-like-xml? s)
+    (try
+      (xml/parse (java.io.ByteArrayInputStream. (.getBytes s)))
+      (catch Exception e
+        (log/infof "Sitemap body is not parsable XML: %s" (ex-message e))
+        nil))))
 
 (defn- fetch-sitemap [url]
   (let [{:keys [status body]} (http/get url {:throw false
-                                              :headers {"User-Agent" "super-rss sitemap-reader"}})]
+                                             :headers {"User-Agent" "super-rss sitemap-reader"}})]
     (when (= 200 status)
-      (let [content-list (:content (parse-xml-string body))
-            url-list (for [{:keys [content]} content-list
-                           :let [url (->> content (filter #(= :loc (:tag %))) first :content first)
-                                 lastmod (->> content (filter #(= :lastmod (:tag %))) first :content first)]]
-                       {:url url
-                        ; Sometimes the date is accurate, sometimes no
-                        :lastmod (when lastmod
-                                   (try
-                                     (clojure.instant/read-instant-date lastmod)
-                                     (catch Exception _)))})]
-        (->> url-list
-             (sort-by :lastmod)
-             (reverse))))))
+      (when-let [sitemap (parse-xml-string body)]
+        (let [content-list (:content sitemap)
+              url-list (for [{:keys [content]} content-list
+                             :let [url (->> content (filter #(= :loc (:tag %))) first :content first)
+                                   lastmod (->> content (filter #(= :lastmod (:tag %))) first :content first)]]
+                         {:url url
+                          ; Sometimes the date is accurate, sometimes no
+                          :lastmod (when lastmod
+                                     (try
+                                       (clojure.instant/read-instant-date lastmod)
+                                       (catch Exception _)))})]
+          (->> url-list
+               ; A <url> without a <loc> yields no URL and is nothing but an NPE downstream
+               (remove #(nil? (:url %)))
+               (sort-by :lastmod)
+               (reverse)))))))
 
 (defn- sitemap-url->sitemap-contents
   [url]

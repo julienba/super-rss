@@ -1,9 +1,12 @@
 (ns super-rss.impl.sitemap-test
   (:require [clojure.instant :as instant]
             [clojure.string :as string]
-            [clojure.test :refer [deftest is testing]]
+            [clojure.test :refer [are deftest is testing]]
+            [super-rss.html]
+            [super-rss.http]
             [super-rss.impl.common :as common]
-            [super-rss.impl.sitemap :as sut]))
+            [super-rss.impl.sitemap :as sut]
+            [super-rss.robots-txt]))
 
 (deftest test-url->title
   (testing "Extract title from URL with hyphens"
@@ -312,3 +315,98 @@
         (is (not-any? #(= (:url %) "https://gamma.app/contact") clean-sitemap-contents)
             "Should exclude non-article URLs")))))
 
+
+(def ^:private wp-rocket-html
+  "<!doctype html><html><head>
+   <link rel=\"preload\" href=\"/style.css\" data-rocket-prefetch as=\"style\">
+   </head><body><h1>Page not found</h1></body></html>")
+
+(def ^:private bare-ampersand-html
+  "<!doctype html><html><body><p>Tips & tricks</p></body></html>")
+
+(def ^:private valid-sitemap
+  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+   <urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">
+     <url><loc>https://example.com/blog/first</loc><lastmod>2026-01-02</lastmod></url>
+     <url><loc>https://example.com/blog/second</loc><lastmod>2026-03-04</lastmod></url>
+   </urlset>")
+
+(defn- responding
+  "An `http/get` stub answering every URL with the given status/body."
+  [status body]
+  (fn [_url & _opts] {:status status :body body}))
+
+(deftest fetch-sitemap-non-xml-test
+  (testing "HTML served at a sitemap path yields nothing instead of throwing"
+    (are [body description] (nil? (with-redefs [super-rss.http/get (responding 200 body)]
+                                    (#'sut/fetch-sitemap "https://example.com/sitemap.xml")))
+      wp-rocket-html "WP Rocket page with an unquoted data-rocket-prefetch attribute"
+      bare-ampersand-html "HTML page containing a bare &"
+      "<!doctype html><html><head><meta charset=\"utf-8\"></head></html>" "HTML with an unterminated <meta>"
+      "" "empty body"
+      "Not found" "plain text soft-404"))
+
+  (testing "a body that opens like XML but is malformed yields nothing instead of throwing"
+    (is (nil? (with-redefs [super-rss.http/get (responding 200 "<?xml version=\"1.0\"?><urlset><url><loc>oops")]
+                (#'sut/fetch-sitemap "https://example.com/sitemap.xml")))))
+
+  (testing "a well-formed sitemap still parses, newest first"
+    (let [result (with-redefs [super-rss.http/get (responding 200 valid-sitemap)]
+                   (#'sut/fetch-sitemap "https://example.com/sitemap.xml"))]
+      (is (= ["https://example.com/blog/second" "https://example.com/blog/first"]
+             (map :url result)))
+      (is (= (instant/read-instant-date "2026-03-04") (:lastmod (first result))))))
+
+  (testing "a non-200 yields nothing"
+    (is (nil? (with-redefs [super-rss.http/get (responding 404 valid-sitemap)]
+                (#'sut/fetch-sitemap "https://example.com/sitemap.xml"))))))
+
+(deftest find-sitemap-url-fallback-test
+  (testing "the /sitemap.xml fallback is not accepted when the body is not XML"
+    (with-redefs [super-rss.robots-txt/get-robots-txt (constantly nil)
+                  super-rss.html/fetch (constantly nil)
+                  super-rss.http/get (responding 200 wp-rocket-html)]
+      (is (nil? (#'sut/find-sitemap-url "https://example.com")))))
+
+  (testing "the /sitemap.xml fallback is accepted when the body is XML"
+    (with-redefs [super-rss.robots-txt/get-robots-txt (constantly nil)
+                  super-rss.html/fetch (constantly nil)
+                  super-rss.http/get (responding 200 valid-sitemap)]
+      (is (= "https://example.com/sitemap.xml"
+             (#'sut/find-sitemap-url "https://example.com"))))))
+
+(deftest fetch-sitemap-loc-less-entry-test
+  (testing "a <url> with no <loc> is dropped rather than left to NPE downstream"
+    (let [body (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"
+                    "  <url><lastmod>2026-01-02</lastmod></url>"
+                    "  <url><loc>https://example.com/blog/first</loc></url>"
+                    "</urlset>")
+          result (with-redefs [super-rss.http/get (responding 200 body)]
+                   (#'sut/fetch-sitemap "https://example.com/sitemap.xml"))]
+      (is (= ["https://example.com/blog/first"] (map :url result)))))
+
+  (testing "the sitemap index walk survives a loc-less entry"
+    (let [index (str "<?xml version=\"1.0\"?><sitemapindex>"
+                     "<sitemap><lastmod>2026-01-02</lastmod></sitemap>"
+                     "</sitemapindex>")]
+      (is (empty? (with-redefs [super-rss.http/get (responding 200 index)]
+                    (#'sut/sitemap-url->sitemap-contents "https://example.com/sitemap.xml")))))))
+
+(deftest body-looks-like-xml?-test
+  (testing "accepted openings"
+    (are [body description] (#'sut/body-looks-like-xml? body)
+      "<?xml version=\"1.0\"?><urlset/>" "XML declaration"
+      "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"></urlset>" "bare urlset root"
+      "<sitemapindex></sitemapindex>" "bare sitemapindex root"
+      (str "\uFEFF" "<?xml version=\"1.0\"?><urlset/>") "body prefixed with a BOM"
+      "\n  <?xml version=\"1.0\"?><urlset/>" "leading whitespace"
+      "<?XML version=\"1.0\"?><URLSET/>" "uppercase"))
+
+  (testing "rejected openings"
+    (are [body description] (nil? (#'sut/body-looks-like-xml? body))
+      "<!doctype html><html></html>" "HTML page"
+      "<html><body><urlset/></body></html>" "XML-looking element further down an HTML page"
+      "Not found" "plain text"
+      "" "empty body"
+      nil "nil body")))
