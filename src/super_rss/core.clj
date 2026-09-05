@@ -20,7 +20,7 @@
               :url url}}))
 
 (defmethod fetch :find-rss-url [_ url {:keys [timeout throw?]}]
-  (when-let [feed-url (impl.normal/find-feed-url url {:timeout timeout})]
+  (when-let [feed-url (impl.normal/find-feed-url url {:timeout timeout :throw? throw?})]
     (when-let [result (impl.normal/fetch-rss feed-url {:throw? throw? :timeout timeout})]
       {:title (:title result)
        :description (:description result)

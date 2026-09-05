@@ -44,8 +44,8 @@ Useful to not crawl over and over the same page for big sitemap.
 ```
 
 ## Telling failures apart
-With `{:throw? true}` every exception super-rss raises carries `ex-data`, so a caller can
-tell a permanently dead source from a blip instead of counting all failures the same:
+Every exception super-rss raises carries `ex-data`, so a caller can tell a permanently
+dead source from a blip instead of counting all failures the same:
 ```clj
 {:super-rss/error :dns     ; :dns :timeout :http-status :challenge :parse :unknown
  :url    "https://example.com/feed"
@@ -55,6 +55,12 @@ tell a permanently dead source from a blip instead of counting all failures the 
 `:dns` and a `404` are worth giving up on; `:timeout` and `:challenge` are worth retrying.
 Note that `:challenge` keys on `cf-mitigated` or the interstitial body, never on
 `server: cloudflare` - plenty of ordinary origin errors are served through Cloudflare.
+
+This describes what is *raised*. Pass `{:throw? true}` to get exceptions at all: by default
+a failing strategy is swallowed and `get-feed` returns `nil`, which is also what a strategy
+that simply found nothing returns. A challenge is only ever recognised where the response
+headers are in hand - `remus` reports a non-2xx with the status alone, so a feed fetched
+directly behind a bot block classifies `:http-status` rather than `:challenge`.
 
 ## Limitations
 - Filtering what looks like a feed entry won't work all the time

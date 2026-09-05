@@ -35,19 +35,27 @@
         (body-looks-like-rss? body))))
 
 (defn validate-rss-url
-  "Check if a URL returns valid RSS content. Returns the URL if valid, nil otherwise."
-  [url {:keys [timeout]}]
+  "Check if a URL returns valid RSS content. Returns the URL if valid, nil otherwise.
+   With `:throw?` a request that failed - a challenge, a 403 - is raised classified
+   rather than reported as \"not a feed\"."
+  [url {:keys [timeout throw?]}]
   (try
     (let [response (http/get url {:timeout-ms (or timeout 10000)
                                   :headers {"User-Agent" "super-rss rss-validator"}})]
       (if (valid-rss-response? response)
         url
-        (do
-          (log/infof "RSS URL %s does not return valid RSS (content-type: %s)"
-                     url (get-in response [:headers "content-type"]))
+        ; A challenge or a 403 is a different answer from "this is not a feed", and this
+        ; is the only place the response map itself is in hand to tell them apart
+        (let [error (error/classify-response response)]
+          (log/infof "RSS URL %s does not return valid RSS (%s, content-type: %s)"
+                     url (or error :not-a-feed) (get-in response [:headers "content-type"]))
+          (when (and error throw?)
+            (throw (error/response-error url response)))
           nil)))
     (catch Exception e
       (log/debugf "Failed to validate RSS URL %s: %s" url (ex-message e))
+      (when throw?
+        (throw (error/feed-error url e)))
       nil)))
 
 (defn- feed-url->absolute-feed-url [website-url feed-url]
@@ -73,7 +81,7 @@
 (defn find-feed-url
   "Find and validate RSS feed URL from a website.
    Returns the absolute feed URL if valid, nil otherwise."
-  [website-url {:keys [_timeout] :as opts}]
+  [website-url {:keys [_timeout throw?] :as opts}]
   (try
     (let [content (rss.html/fetch website-url {"User-Agent" "super-rss rss-reader"})]
       (when-let [feed-url (find-feed-url' website-url content)]
@@ -81,6 +89,8 @@
           (validate-rss-url absolute-url opts))))
     (catch Exception e
       (log/debugf "Failed to find feed URL for %s: %s" website-url (ex-message e))
+      (when throw?
+        (throw (error/feed-error website-url e)))
       nil)))
 
 (defn- parse-rss-from-body
@@ -123,7 +133,7 @@
                         ; A challenge or a 403 on the fallback fetch is the real story,
                         ; not the content-type error that sent us here
                         (throw (if (error/classify-response response)
-                                 (error/response-error url response)
+                                 (error/response-error url response e)
                                  (error/feed-error url e)))))))
               (catch Exception fetch-e
                 (log/errorf "Fallback fetch failed for %s: %s" url (ex-message fetch-e))
@@ -131,11 +141,8 @@
           (do
             (log/errorf "Fail to fetch url %s : %s" url msg)
             (when throw? (throw (error/feed-error url e)))))))
-    (catch clojure.lang.ExceptionInfo e
-      (let [response (ex-data e)]
-        (log/errorf "Fail to fetch url %s %s" url response)
-        (when throw?
-          (throw (error/feed-error url e response)))))
+    ; No catch for ExceptionInfo: it extends RuntimeException, so the branch above
+    ; already has it. feed-error digs a status out of the cause chain regardless.
     (catch Exception e
       (log/errorf "Fail to fetch url %s : %s" url (ex-message e))
       (when throw?

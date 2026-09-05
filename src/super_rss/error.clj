@@ -17,8 +17,16 @@
            [org.xml.sax SAXException]))
 
 (def ^:private challenge-body-pattern
-  "Cloudflare's managed-challenge interstitial."
-  #"(?i)Just a moment|Enable JavaScript and cookies|cf-browser-verification|challenge-platform")
+  "Cloudflare's managed-challenge interstitial. The two marker strings are unambiguous;
+   the wording is only trusted on a status Cloudflare actually challenges with, so an
+   origin 500 whose body happens to say \"just a moment\" stays an origin 500."
+  #"(?i)cf-browser-verification|challenge-platform")
+
+(def ^:private challenge-wording-pattern
+  #"(?i)Just a moment|Enable JavaScript and cookies")
+
+(def ^:private challenge-statuses
+  #{403 429 503})
 
 (def ^:private parse-message-pattern
   "Messages from remus/rome and the XML parsers underneath them."
@@ -35,35 +43,52 @@
   "Cloudflare fronts a great many origins, so `server: cloudflare` says nothing about
    who refused the request. `cf-mitigated`, or the interstitial itself, is the signal
    that a bot check rather than the origin turned us away."
-  [{:keys [headers body]}]
+  [{:keys [status headers body]}]
   (boolean (or (header headers "cf-mitigated")
-               (and (string? body) (re-find challenge-body-pattern body)))))
+               (and (string? body)
+                    (or (re-find challenge-body-pattern body)
+                        (and (challenge-statuses status)
+                             (re-find challenge-wording-pattern body)))))))
 
 (defn classify-response
-  "Classify an HTTP response map, or nil when it is not a failure."
+  "Classify an HTTP response map, or nil when it is not a failure.
+   Total: this sits on a boundary every exception passes through, so a response map
+   carrying anything but a numeric status must not turn the real failure into a
+   ClassCastException."
   [{:keys [status] :as response}]
-  (when (and status (not (<= 200 status 299)))
+  (when (and (number? status) (not (<= 200 status 399)))
     (if (challenge? response)
       :challenge
       :http-status)))
 
+(def ^:private remus-status-pattern
+  #"Non-200 status code, status: (\d+)")
+
 (defn- causes [e]
   (take-while some? (iterate ex-cause e)))
 
-(defn- response-in-chain
-  "The HTTP response an exception carries, if any. clj-http, which remus uses,
-   puts `:status`/`:headers`/`:body` in the ex-data of the exception it throws."
+(defn- exception-response
+  "The HTTP response an exception carries, if any.
+   remus raises a non-2xx as a plain RuntimeException with the status in the message
+   and nothing in ex-data, so the message is worth reading as well. No headers or body
+   come with it, which is why a challenge is only ever recognised where the response
+   map itself is in hand."
   [e]
-  (some #(let [data (ex-data %)]
-           (when (:status data) data))
-        (causes e)))
+  (let [data (ex-data e)]
+    (if (:status data)
+      data
+      (when-let [[_ status] (some->> (ex-message e) (re-find remus-status-pattern))]
+        {:status (parse-long status)}))))
+
+(defn- response-in-chain [e]
+  (some exception-response (causes e)))
 
 (defn classify-exception
   "Classify a throwable by walking its cause chain. Returns `:unknown` when nothing
    in the chain is recognised, so a caller always has something to dispatch on."
   [e]
   (or (some (fn [c]
-              (or (classify-response (ex-data c))
+              (or (classify-response (exception-response c))
                   (condp instance? c
                     UnknownHostException :dns
                     ; The host resolves and nothing answers, or answers too slowly
@@ -93,21 +118,25 @@
    (if (classified? e)
      e
      (let [response (or response (response-in-chain e))
-           error (or (classify-response response) (classify-exception e))]
-       (ex-info (format "Fail to fetch %s (%s): %s" url (name error) (ex-message e))
+           error (or (classify-response response) (classify-exception e))
+           cause (or (ex-message e) (.getName (class e)))]
+       (ex-info (format "Fail to fetch %s (%s): %s" url (name error) cause)
                 (cond-> {:super-rss/error error
                          :url url
-                         :cause (ex-message e)}
+                         :cause cause}
                   (:status response) (assoc :status (:status response)))
                 e)))))
 
 (defn response-error
   "An exception for a response that came back fine at the socket level and is still
-   a failure: a non-2xx status, or a bot challenge."
-  [url {:keys [status] :as response}]
-  (let [error (or (classify-response response) :http-status)]
-    (ex-info (format "Fail to fetch %s (%s): status %s" url (name error) status)
-             {:super-rss/error error
-              :url url
-              :status status
-              :cause (format "HTTP %s" status)})))
+   a failure: a non-2xx status, or a bot challenge.
+   `cause` is the exception that sent us looking, when there was one."
+  ([url response] (response-error url response nil))
+  ([url {:keys [status] :as response} cause]
+   (let [error (or (classify-response response) :http-status)]
+     (ex-info (format "Fail to fetch %s (%s): status %s" url (name error) status)
+              {:super-rss/error error
+               :url url
+               :status status
+               :cause (format "HTTP %s" status)}
+              cause))))

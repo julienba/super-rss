@@ -64,10 +64,10 @@
     (is (= :timeout (sut/classify-exception (ConnectException. "Connection timed out")))
         "host resolves, nothing listens (buildingvts.com)"))
 
-  (testing "HTTP status carried in ex-data, the shape clj-http throws"
-    (is (= :challenge (sut/classify-exception (ex-info "clj-http: status 403" cloudflare-challenge))))
-    (is (= :http-status (sut/classify-exception (ex-info "clj-http: status 403" origin-403))))
-    (is (= :http-status (sut/classify-exception (ex-info "clj-http: status 504" origin-504)))))
+  (testing "HTTP status carried in ex-data, the shape an http client throws"
+    (is (= :challenge (sut/classify-exception (ex-info "http client: status 403" cloudflare-challenge))))
+    (is (= :http-status (sut/classify-exception (ex-info "http client: status 403" origin-403))))
+    (is (= :http-status (sut/classify-exception (ex-info "http client: status 504" origin-504)))))
 
   (testing "parse"
     (is (= :parse (sut/classify-exception (SAXParseException. "The entity name must immediately follow the '&' in the entity reference." nil))))
@@ -104,3 +104,44 @@
       (is (= {:super-rss/error :challenge :url url :status 403 :cause "HTTP 403"}
              (ex-data (sut/response-error url cloudflare-challenge))))
       (is (= :http-status (:super-rss/error (ex-data (sut/response-error url origin-403))))))))
+
+(deftest remus-message-status-test
+  (testing "remus raises a non-2xx as a plain RuntimeException with the status only in the message"
+    (is (= :http-status (sut/classify-exception
+                         (RuntimeException. "Non-200 status code, status: 403, url: https://example.com/feed, content-type: text/html"))))
+    (is (= 403 (:status (ex-data (sut/feed-error "https://example.com/feed"
+                                                 (RuntimeException. "Non-200 status code, status: 403, url: https://example.com/feed, content-type: text/html"))))))
+    (is (= :parse (sut/classify-exception
+                   (RuntimeException. "Non-XML response, status: 200, url: https://example.com/feed, content-type: text/html")))
+        "a 200 that is not XML is a parse problem, not a status one")))
+
+(deftest classifier-is-total-test
+  (testing "a boundary every exception passes through must never throw itself"
+    (are [response] (nil? (sut/classify-response response))
+      {:status "n/a"}
+      {:status nil}
+      {:status :weird}
+      {})
+    (is (= :unknown (sut/classify-exception (ex-info "handler blew up" {:status "n/a"})))
+        "a user handler's ex-data must not turn the real failure into a ClassCastException")
+    (is (= :unknown (:super-rss/error (ex-data (sut/feed-error "https://example.com" (ex-info "boom" {:status "n/a"}))))))))
+
+(deftest challenge-is-not-over-claimed-test
+  (testing "the interstitial wording is only trusted on a status Cloudflare challenges with"
+    (is (= :http-status (sut/classify-response {:status 500
+                                                :headers {}
+                                                :body "Just a moment while we log the error"}))
+        "an origin 500 that happens to use the phrase is not a bot block")
+    (is (= :challenge (sut/classify-response {:status 503
+                                              :headers {}
+                                              :body "<title>Just a moment...</title>"})))
+    (is (= :challenge (sut/classify-response {:status 500
+                                              :headers {}
+                                              :body "<div id=\"cf-browser-verification\">"}))
+        "the unambiguous marker needs no status corroboration")))
+
+(deftest message-without-text-test
+  (testing "an exception with no message does not put \"null\" in the log line"
+    (let [e (sut/feed-error "https://example.com/feed" (RuntimeException.))]
+      (is (= "java.lang.RuntimeException" (:cause (ex-data e))))
+      (is (not (re-find #"null" (ex-message e)))))))
