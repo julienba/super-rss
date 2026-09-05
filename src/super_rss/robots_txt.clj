@@ -10,7 +10,7 @@
   ([base-url opts]
    (let [{:keys [status body]} (http/get (str base-url "/robots.txt")
                                          {:throw-on-error false
-                                          :headers (http/headers "robots-txt-reader" opts)})]
+                                          :headers (http/headers "robots-txt-reader" nil opts)})]
      (when (= 200 status)
        (->> (string/split-lines body)
             (remove string/blank?)

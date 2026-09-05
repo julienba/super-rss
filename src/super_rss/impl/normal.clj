@@ -38,7 +38,7 @@
   [url {:keys [timeout] :as opts}]
   (try
     (let [response (http/get url {:timeout-ms (or timeout 10000)
-                                  :headers (http/headers "rss-validator" opts)})]
+                                  :headers (http/headers "rss-validator" http/feed-accept opts)})]
       (if (valid-rss-response? response)
         url
         (do
@@ -74,7 +74,7 @@
    Returns the absolute feed URL if valid, nil otherwise."
   [website-url {:keys [_timeout] :as opts}]
   (try
-    (let [content (rss.html/fetch website-url (http/headers "rss-reader" opts))]
+    (let [content (rss.html/fetch website-url (http/headers "rss-reader" http/html-accept opts))]
       (when-let [feed-url (find-feed-url' website-url content)]
         (let [absolute-url (feed-url->absolute-feed-url website-url feed-url)]
           (validate-rss-url absolute-url opts))))
@@ -101,7 +101,7 @@
   (try
     (let [{:keys [feed]} (remus/parse-url url {:insecure? true
                                                :connection-timeout timeout
-                                               :headers (http/headers "rss-reader" opts)})]
+                                               :headers (http/headers "rss-reader" http/feed-accept opts)})]
       {:title (some-> (:title feed) (string/trim))
        :description (some-> (:description feed) (string/trim))
        :entries (:entries feed)})
@@ -113,7 +113,7 @@
             (log/debugf "Content-type mismatch for %s, attempting body parse" url)
             (try
               (let [response (http/get url {:timeout-ms (or timeout 10000)
-                                            :headers (http/headers "rss-reader" opts)})
+                                            :headers (http/headers "rss-reader" http/feed-accept opts)})
                     body (:body response)]
                 (or (parse-rss-from-body body)
                     (do

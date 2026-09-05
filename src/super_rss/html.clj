@@ -60,7 +60,7 @@
   "Return the title and description of a webpage"
   ([url] (extract-simple-html-meta url nil))
   ([url opts]
-   (let [data (fetch url (http/headers "title+description-finder" opts))]
+   (let [data (fetch url (http/headers "title+description-finder" http/html-accept opts))]
      {:title       (some-> (get-page-title data) string/trim clean-title)
       :description (some-> (get-page-description data) string/trim)})))
 
@@ -68,7 +68,7 @@
   "Return the minimal expected element for a RSS feed: title, description, published-date, link"
   ([url] (extract-html-meta url nil))
   ([url opts]
-   (let [data (fetch url (http/headers "build-rss-from-html" opts))
+   (let [data (fetch url (http/headers "build-rss-from-html" http/html-accept opts))
          date (get-page-date data)]
      (merge (extract-simple-html-meta url opts)
             {:published-date (when date (date/local-date->date date))

@@ -21,7 +21,7 @@
 (defn flat-poor-man-rss-html
   ([url] (flat-poor-man-rss-html url nil))
   ([url opts]
-   (let [content (rss.html/fetch-hickory url (http/headers "poor-man-rss" opts))
+   (let [content (rss.html/fetch-hickory url (http/headers "poor-man-rss" http/html-accept opts))
          root-url (common/get-root-url url)
          all-links (->> (smart-links/find-all-links root-url content)
                         (remove #(= url %))

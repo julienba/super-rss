@@ -31,7 +31,7 @@
 (defn- find-sitemap-url-in-html
   "Look if the sitemap is specify in the html head"
   [base-url opts]
-  (let [content (rss.html/fetch (str base-url "/") (http/headers "sitemap-finder" opts))]
+  (let [content (rss.html/fetch (str base-url "/") (http/headers "sitemap-finder" http/html-accept opts))]
     (when-let [url (->> (html/select content [:head :link])
                         (filter (fn [{:keys [attrs]}] (= "sitemap" (:rel attrs))))
                         first
@@ -45,7 +45,7 @@
       (find-sitemap-url-in-html base-url opts)
       ; Give a try to a classic sitemap URL
       (let [{:keys [status]} (http/get (str base-url "/sitemap.xml") {:throw-on-error false
-                                                                      :headers (http/headers "sitemap-finder" opts)})]
+                                                                      :headers (http/headers "sitemap-finder" http/feed-accept opts)})]
         (when (= 200 status)
           (str base-url "/sitemap.xml")))))
 
@@ -54,7 +54,7 @@
 
 (defn- fetch-sitemap [url opts]
   (let [{:keys [status body]} (http/get url {:throw false
-                                             :headers (http/headers "sitemap-reader" opts)})]
+                                             :headers (http/headers "sitemap-reader" http/feed-accept opts)})]
     (when (= 200 status)
       (let [content-list (:content (parse-xml-string body))
             url-list (for [{:keys [content]} content-list

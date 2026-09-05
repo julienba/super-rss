@@ -264,7 +264,7 @@
 (defn poor-man-rss-html
   ([url] (poor-man-rss-html url nil))
   ([url opts]
-   (let [content (rss.html/fetch-hickory url (http/headers "poor-man-rss" opts))
+   (let [content (rss.html/fetch-hickory url (http/headers "poor-man-rss" http/html-accept opts))
          root-url (common/get-root-url url)
          all-links (->> (find-all-links root-url content)
                         (remove #(= url %)))]

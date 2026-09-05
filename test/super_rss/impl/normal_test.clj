@@ -172,10 +172,21 @@
         (sut/validate-rss-url "https://example.com/feed" {})
         (is (= (str super-rss.http/default-user-agent " rss-validator")
                (get-in @captured [:headers "User-Agent"])))
-        (is (= super-rss.http/accept (get-in @captured [:headers "Accept"])))))
+        (is (= super-rss.http/feed-accept (get-in @captured [:headers "Accept"]))
+            "validating a feed URL asks for a feed")))
 
     (testing "a configured :user-agent reaches http/get"
       (with-redefs [super-rss.http/get stub]
         (sut/validate-rss-url "https://example.com/feed" {:user-agent "my-reader/2.0 (+https://example.com)"})
-        (is (= "my-reader/2.0 (+https://example.com) rss-validator"
+        (is (= (str "my-reader/2.0 (+https://example.com) " super-rss.http/default-user-agent " rss-validator")
                (get-in @captured [:headers "User-Agent"])))))))
+
+(deftest find-feed-url-headers-test
+  (testing "the page fetched for <link> discovery asks for HTML, not a feed"
+    (let [captured (atom nil)]
+      (with-redefs [super-rss.http/get (fn [_url opts]
+                                         (reset! captured opts)
+                                         (response 200 "text/html" "<html><body></body></html>"))]
+        (sut/find-feed-url "https://example.com" {})
+        (is (= super-rss.http/html-accept (get-in @captured [:headers "Accept"]))
+            "a server answering an HTML scrape with a feed would silently yield nothing")))))
