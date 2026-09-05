@@ -45,7 +45,7 @@
    Only a body opening on an XML declaration or a sitemap root is worth parsing."
   [body]
   (when body
-    (re-find #"(?i)^[\s﻿]*(<\?xml|<urlset|<sitemapindex)" body)))
+    (re-find #"(?i)^[\s\uFEFF]*(<\?xml|<urlset|<sitemapindex)" body)))
 
 (defn- find-sitemap-url [base-url]
   (or (find-sitemap-url-in-robots base-url)
@@ -85,6 +85,8 @@
                                        (clojure.instant/read-instant-date lastmod)
                                        (catch Exception _)))})]
           (->> url-list
+               ; A <url> without a <loc> yields no URL and is nothing but an NPE downstream
+               (remove #(nil? (:url %)))
                (sort-by :lastmod)
                (reverse)))))))
 

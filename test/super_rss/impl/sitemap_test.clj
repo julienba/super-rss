@@ -374,3 +374,39 @@
                   super-rss.http/get (responding 200 valid-sitemap)]
       (is (= "https://example.com/sitemap.xml"
              (#'sut/find-sitemap-url "https://example.com"))))))
+
+(deftest fetch-sitemap-loc-less-entry-test
+  (testing "a <url> with no <loc> is dropped rather than left to NPE downstream"
+    (let [body (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"
+                    "  <url><lastmod>2026-01-02</lastmod></url>"
+                    "  <url><loc>https://example.com/blog/first</loc></url>"
+                    "</urlset>")
+          result (with-redefs [super-rss.http/get (responding 200 body)]
+                   (#'sut/fetch-sitemap "https://example.com/sitemap.xml"))]
+      (is (= ["https://example.com/blog/first"] (map :url result)))))
+
+  (testing "the sitemap index walk survives a loc-less entry"
+    (let [index (str "<?xml version=\"1.0\"?><sitemapindex>"
+                     "<sitemap><lastmod>2026-01-02</lastmod></sitemap>"
+                     "</sitemapindex>")]
+      (is (empty? (with-redefs [super-rss.http/get (responding 200 index)]
+                    (#'sut/sitemap-url->sitemap-contents "https://example.com/sitemap.xml")))))))
+
+(deftest body-looks-like-xml?-test
+  (testing "accepted openings"
+    (are [body description] (#'sut/body-looks-like-xml? body)
+      "<?xml version=\"1.0\"?><urlset/>" "XML declaration"
+      "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"></urlset>" "bare urlset root"
+      "<sitemapindex></sitemapindex>" "bare sitemapindex root"
+      (str "\uFEFF" "<?xml version=\"1.0\"?><urlset/>") "body prefixed with a BOM"
+      "\n  <?xml version=\"1.0\"?><urlset/>" "leading whitespace"
+      "<?XML version=\"1.0\"?><URLSET/>" "uppercase"))
+
+  (testing "rejected openings"
+    (are [body description] (nil? (#'sut/body-looks-like-xml? body))
+      "<!doctype html><html></html>" "HTML page"
+      "<html><body><urlset/></body></html>" "XML-looking element further down an HTML page"
+      "Not found" "plain text"
+      "" "empty body"
+      nil "nil body")))
