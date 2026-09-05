@@ -140,3 +140,46 @@
                :status status
                :cause (format "HTTP %s" status)}
               cause))))
+
+(defn- classify-failures
+  "Classify each failure of a cascade, keeping the method that raised it."
+  [url failures]
+  (map (fn [{:keys [method error]}]
+         {:method method :error (feed-error url error)})
+       failures))
+
+(defn- primary-failure
+  "Strategies run from the most specific to the most hacky, so a later scraper's parse
+   error must not mask an earlier :dns or :challenge. The first failure that is not
+   :unknown speaks for the run; when nothing is recognised, the first one does."
+  [classified]
+  (or (first (remove #(= :unknown (:super-rss/error (ex-data (:error %)))) classified))
+      (first classified)))
+
+(defn- failure-summary [{:keys [method error]}]
+  (-> (ex-data error)
+      (select-keys [:super-rss/error :url :status :cause])
+      (assoc :method method)))
+
+(defn summarize-failures
+  "One line per failed strategy, for the log entry written when a run is swallowed."
+  [url failures]
+  (->> (classify-failures url failures)
+       (map (fn [{:keys [method error]}]
+              (format "%s %s" (name method) (name (:super-rss/error (ex-data error))))))
+       (string/join ", ")))
+
+(defn cascade-error
+  "One exception for a run where every strategy failed.
+   `failures` is a seq of `{:method kw :error throwable}` in the order the strategies ran.
+   The ex-data is the primary failure's, so `:super-rss/error`, `:url` and `:status` read
+   exactly as for a single strategy, plus `:method` naming the strategy that raised it and
+   `:errors`, one map per failed strategy in run order. The primary exception is the cause."
+  [url failures]
+  (let [classified (classify-failures url failures)
+        {:keys [method error]} (primary-failure classified)]
+    (ex-info (ex-message error)
+             (assoc (ex-data error)
+                    :method method
+                    :errors (mapv failure-summary classified))
+             error)))
